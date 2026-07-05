@@ -9,12 +9,15 @@ export default function TitleCard({
   variant = 'discover',
   reason,
   inWatchlist,
+  ratingPrefs = { useImdb: true, useRt: true },
   onRate,
   onWatchlist,
   onRemove,
 }) {
-  const rating = item.imdb ? item.imdb.toFixed(1) : '—'
-  const source = item.ratingSource || 'IMDb'
+  const { useImdb = true, useRt = true } = ratingPrefs
+  const imdbSource = item.ratingSource === 'TMDB' ? 'TMDB score' : 'IMDb rating'
+  const showImdb = useImdb && item.imdb != null && item.imdb > 0
+  const showRt = useRt && item.rt != null
 
   return (
     <article className="card">
@@ -26,14 +29,27 @@ export default function TitleCard({
         </header>
 
         <div className="card__meta">
-          <span className="badge badge--rating" title={`${source} rating`}>
-            ★ {rating}
-          </span>
-          <span className="badge badge--service">{item.service}</span>
+          {showImdb && (
+            <span className="badge badge--imdb" title={imdbSource}>
+              IMDb {item.imdb.toFixed(1)}
+            </span>
+          )}
+          {showRt && (
+            <span className="badge badge--rt" title="Rotten Tomatoes">
+              🍅 {item.rt}%
+            </span>
+          )}
           {(item.genres || []).slice(0, 3).map((g) => (
             <span key={g} className="badge badge--genre">{g}</span>
           ))}
         </div>
+
+        {item.service && (
+          <p className="card__where">
+            <span className="card__wherelabel">Where to watch</span>
+            <span className="card__service">▶ {item.service}</span>
+          </p>
+        )}
 
         {item.overview && <p className="card__overview">{item.overview}</p>}
 

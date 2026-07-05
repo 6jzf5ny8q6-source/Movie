@@ -69,6 +69,7 @@ export default function App() {
       genres: item.genres || [],
       moods: item.moods || [],
       imdb: item.imdb || 0,
+      rt: item.rt ?? null,
       service: item.service,
       poster: item.poster,
       image: item.image || null,
@@ -176,6 +177,7 @@ export default function App() {
             onRate={openRate}
             onWatchlist={toggleWatchlist}
             onSetMinImdb={(v) => patchSettings({ minImdb: v })}
+            onSetMinRt={(v) => patchSettings({ minRt: v })}
             onSetServices={(v) => patchSettings({ services: v })}
             onRefreshLive={refreshLive}
             onTakeQuiz={() => setView('quiz')}
@@ -186,6 +188,7 @@ export default function App() {
           <Ratings
             catalog={catalog}
             ratings={ratings}
+            ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
             onRate={openRate}
             onRemove={removeRating}
           />

@@ -13,9 +13,9 @@ const answers = {
 }
 
 const catalog = [
-  { id: 'a', type: 'movie', title: 'Space Epic', year: 2020, imdb: 8.5, genres: ['Sci-Fi', 'Adventure'], moods: ['epic'], service: 'Netflix' },
-  { id: 'b', type: 'movie', title: 'Rom Com', year: 2019, imdb: 6.9, genres: ['Romance', 'Comedy'], moods: ['funny', 'romantic'], service: 'Hulu' },
-  { id: 'c', type: 'show', title: 'Sci Show', year: 2021, imdb: 8.1, genres: ['Sci-Fi'], moods: ['epic'], service: 'Max' },
+  { id: 'a', type: 'movie', title: 'Space Epic', year: 2020, imdb: 8.5, rt: 92, genres: ['Sci-Fi', 'Adventure'], moods: ['epic'], service: 'Netflix' },
+  { id: 'b', type: 'movie', title: 'Rom Com', year: 2019, imdb: 6.9, rt: 55, genres: ['Romance', 'Comedy'], moods: ['funny', 'romantic'], service: 'Hulu' },
+  { id: 'c', type: 'show', title: 'Sci Show', year: 2021, imdb: 8.1, rt: 80, genres: ['Sci-Fi'], moods: ['epic'], service: 'Max' },
 ]
 
 describe('buildProfileFromQuiz', () => {
@@ -61,6 +61,23 @@ describe('scoreItem + recommend', () => {
     const recs = recommend(catalog, taste, { minImdb: 8.0 })
     expect(recs.find((r) => r.title === 'Rom Com')).toBeUndefined()
     expect(recs.length).toBe(2)
+  })
+
+  it('respects the minimum Rotten Tomatoes filter', () => {
+    const recs = recommend(catalog, taste, { useImdb: false, useRt: true, minRt: 70 })
+    expect(recs.find((r) => r.title === 'Rom Com')).toBeUndefined() // rt 55
+    expect(recs.length).toBe(2)
+  })
+
+  it('ignores the IMDb filter when IMDb is disabled', () => {
+    const recs = recommend(catalog, taste, { useImdb: false, minImdb: 9.9, useRt: false })
+    expect(recs.length).toBe(3) // nothing excluded by a disabled system
+  })
+
+  it('does not exclude titles missing a score for an active filter', () => {
+    const noRt = [{ id: 'd', type: 'movie', title: 'No RT', imdb: 8, genres: ['Sci-Fi'], moods: ['epic'], service: 'Max' }]
+    const recs = recommend(noRt, taste, { useRt: true, minRt: 90 })
+    expect(recs.length).toBe(1)
   })
 
   it('filters by type', () => {

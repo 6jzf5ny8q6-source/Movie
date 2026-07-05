@@ -43,7 +43,9 @@ export function buildTasteProfile(profile, ratings) {
 }
 
 // Score a single item against a taste vector. Higher = better match.
-export function scoreItem(item, taste) {
+// `ratingPrefs` controls which rating systems inform the quality tie-breaker.
+export function scoreItem(item, taste, ratingPrefs = { useImdb: true, useRt: true }) {
+  const { useImdb = true, useRt = true } = ratingPrefs
   let genreScore = 0
   for (const g of item.genres || []) genreScore += taste.genres[g] || 0
 
@@ -56,18 +58,28 @@ export function scoreItem(item, taste) {
   const tagCount = (item.genres?.length || 1) + (item.moods?.length || 0) * 0.5
   const affinity = (genreScore + moodScore) / Math.pow(tagCount, 0.25)
 
-  // Quality nudge: taste dominates, IMDb gently breaks ties.
-  const quality = 0.7 + 0.3 * ((item.imdb || 0) / 10)
+  // Quality nudge: taste dominates, ratings gently break ties. Average the
+  // normalized scores of whichever enabled systems have a value for the title.
+  const parts = []
+  if (useImdb && item.imdb) parts.push(item.imdb / 10)
+  if (useRt && item.rt) parts.push(item.rt / 100)
+  const q = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : 0.65
+  const quality = 0.7 + 0.3 * q
 
   return affinity * quality
 }
 
 // Produce ranked recommendations.
-//   opts: { ratings, minImdb, type ('movie'|'show'|'all'), services, limit }
+//   opts: { ratings, useImdb, minImdb, useRt, minRt, type, services, limit }
+// A rating filter only applies when its system is enabled AND the title has a
+// value for it — titles missing a score are never excluded by that filter.
 export function recommend(catalog, taste, opts = {}) {
   const {
     ratings = {},
+    useImdb = true,
     minImdb = 0,
+    useRt = true,
+    minRt = 0,
     type = 'all',
     services = [],
     limit = Infinity,
@@ -75,13 +87,18 @@ export function recommend(catalog, taste, opts = {}) {
 
   const seen = new Set(Object.keys(ratings))
   const serviceSet = new Set(services)
+  const ratingPrefs = { useImdb, useRt }
+
+  const passesImdb = (item) => !useImdb || item.imdb == null || item.imdb >= minImdb
+  const passesRt = (item) => !useRt || item.rt == null || item.rt >= minRt
 
   const scored = catalog
     .filter((item) => type === 'all' || item.type === type)
-    .filter((item) => (item.imdb || 0) >= minImdb)
+    .filter(passesImdb)
+    .filter(passesRt)
     .filter((item) => serviceSet.size === 0 || serviceSet.has(item.service))
     .filter((item) => !seen.has(titleKey(item)))
-    .map((item) => ({ item, score: scoreItem(item, taste) }))
+    .map((item) => ({ item, score: scoreItem(item, taste, ratingPrefs) }))
     .sort((a, b) => b.score - a.score || (b.item.imdb || 0) - (a.item.imdb || 0))
 
   const out = limit === Infinity ? scored : scored.slice(0, limit)

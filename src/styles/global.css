@@ -179,6 +179,8 @@ a { color: var(--teal); }
 .filters__group label { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; gap: 8px; align-items: center; }
 .filters__group--rating { min-width: 260px; flex: 1; }
 .filters__val { color: var(--gold); font-size: 15px; }
+.filters__val--rt { color: #ff8a6a; }
+.filters__off { color: var(--faint); font-size: 13px; max-width: 320px; }
 .filters__group input[type='range'] { width: 100%; }
 .filters__group select {
   background: var(--surface-2); color: var(--text); border: 1px solid var(--line);
@@ -232,10 +234,25 @@ a { color: var(--teal); }
   font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px;
   background: var(--surface-3); color: var(--muted); white-space: nowrap;
 }
-.badge--rating { background: rgba(245, 196, 81, 0.16); color: var(--gold-2); }
+.badge--imdb { background: rgba(245, 196, 81, 0.16); color: var(--gold-2); }
+.badge--rt { background: rgba(250, 90, 60, 0.16); color: #ff8a6a; }
 .badge--service { background: rgba(79, 209, 197, 0.14); color: var(--teal); }
 .badge--genre { background: var(--surface-2); color: var(--muted); }
 .badge--again { background: rgba(226, 103, 160, 0.16); color: var(--pink); }
+
+/* where to watch */
+.card__where {
+  display: flex; align-items: center; gap: 8px; margin: 2px 0 8px;
+  font-size: 12px;
+}
+.card__wherelabel {
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+  font-size: 10px; color: var(--faint);
+}
+.card__service {
+  font-weight: 700; color: var(--teal);
+  background: rgba(79, 209, 197, 0.12); border-radius: 6px; padding: 3px 9px;
+}
 
 /* ---------- poster ---------- */
 .poster {
@@ -354,7 +371,27 @@ a { color: var(--teal); }
 .setting__text p { margin: 0; color: var(--muted); font-size: 13px; max-width: 460px; }
 .setting__control { display: flex; align-items: center; gap: 14px; min-width: 240px; }
 .setting__control input[type='range'] { flex: 1; }
-.setting__value { color: var(--gold); font-weight: 800; min-width: 34px; text-align: right; }
+.setting__value { color: var(--gold); font-weight: 800; min-width: 44px; text-align: right; }
+.setting--disabled { opacity: 0.45; }
+.setting--disabled input[type='range'] { cursor: default; }
+.setting__control--toggles { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.toggle {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font: inherit;
+  font-weight: 700; font-size: 13px; color: var(--muted);
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 99px; padding: 8px 14px 8px 10px; transition: all 0.15s;
+}
+.toggle__dot {
+  width: 30px; height: 17px; border-radius: 99px; background: var(--surface-3);
+  position: relative; transition: background 0.15s; flex: none;
+}
+.toggle__dot::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s;
+}
+.toggle.is-on { color: var(--text); border-color: var(--teal); }
+.toggle.is-on .toggle__dot { background: rgba(79, 209, 197, 0.5); }
+.toggle.is-on .toggle__dot::after { transform: translateX(13px); background: var(--teal); }
 .setting__keys { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
 .setting__keys label { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
 .setting__keys input {

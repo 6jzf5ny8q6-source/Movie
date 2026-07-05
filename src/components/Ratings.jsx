@@ -4,7 +4,7 @@ import TitleCard from './TitleCard.jsx'
 
 // "My Ratings": track what you've watched, score it, and mark watch-again.
 // These ratings feed straight back into the recommendation engine.
-export default function Ratings({ catalog, ratings, onRate, onRemove }) {
+export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemove }) {
   const [query, setQuery] = useState('')
   const [manual, setManual] = useState(false)
 
@@ -60,7 +60,11 @@ export default function Ratings({ catalog, ratings, onRate, onRemove }) {
               <li key={c.id}>
                 <button onClick={() => { onRate(c); setQuery('') }}>
                   <span className="res__title">{c.title}</span>
-                  <span className="res__meta">{c.type === 'movie' ? 'Film' : 'TV'} · {c.year} · ★ {c.imdb.toFixed(1)}</span>
+                  <span className="res__meta">
+                    {c.type === 'movie' ? 'Film' : 'TV'} · {c.year}
+                    {c.imdb ? ` · IMDb ${c.imdb.toFixed(1)}` : ''}
+                    {c.rt != null ? ` · 🍅 ${c.rt}%` : ''}
+                  </span>
                 </button>
               </li>
             ))}
@@ -81,6 +85,7 @@ export default function Ratings({ catalog, ratings, onRate, onRemove }) {
               key={item.id}
               item={item}
               variant="rated"
+              ratingPrefs={ratingPrefs}
               onRate={onRate}
               onRemove={onRemove}
             />

@@ -16,6 +16,7 @@ export default function Discover({
   onRate,
   onWatchlist,
   onSetMinImdb,
+  onSetMinRt,
   onSetServices,
   onRefreshLive,
   onTakeQuiz,
@@ -26,17 +27,22 @@ export default function Discover({
 
   const common = {
     ratings,
+    useImdb: settings.useImdb,
     minImdb: settings.minImdb,
+    useRt: settings.useRt,
+    minRt: settings.minRt,
     services: settings.services,
   }
+  const ratingPrefs = { useImdb: settings.useImdb, useRt: settings.useRt }
+  const deps = [catalog, taste, ratings, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services]
 
   const movies = useMemo(
     () => recommend(catalog, taste, { ...common, type: 'movie' }),
-    [catalog, taste, ratings, settings.minImdb, settings.services],
+    deps, // eslint-disable-line react-hooks/exhaustive-deps
   )
   const shows = useMemo(
     () => recommend(catalog, taste, { ...common, type: 'show' }),
-    [catalog, taste, ratings, settings.minImdb, settings.services],
+    deps, // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const inWatch = (item) => Boolean(watchlist[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
@@ -58,6 +64,7 @@ export default function Discover({
               variant="discover"
               reason={explain(item, taste)}
               inWatchlist={inWatch(item)}
+              ratingPrefs={ratingPrefs}
               onRate={onRate}
               onWatchlist={onWatchlist}
             />
@@ -87,20 +94,45 @@ export default function Discover({
       )}
 
       <div className="filters">
-        <div className="filters__group filters__group--rating">
-          <label>
-            Minimum IMDb rating
-            <strong className="filters__val">{settings.minImdb.toFixed(1)}</strong>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="9.5"
-            step="0.1"
-            value={settings.minImdb}
-            onChange={(e) => onSetMinImdb(Number(e.target.value))}
-          />
-        </div>
+        {settings.useImdb && (
+          <div className="filters__group filters__group--rating">
+            <label>
+              Minimum IMDb rating
+              <strong className="filters__val">{settings.minImdb.toFixed(1)}</strong>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="9.5"
+              step="0.1"
+              value={settings.minImdb}
+              onChange={(e) => onSetMinImdb(Number(e.target.value))}
+            />
+          </div>
+        )}
+
+        {settings.useRt && (
+          <div className="filters__group filters__group--rating">
+            <label>
+              Minimum Rotten Tomatoes
+              <strong className="filters__val filters__val--rt">{settings.minRt}%</strong>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={settings.minRt}
+              onChange={(e) => onSetMinRt(Number(e.target.value))}
+            />
+          </div>
+        )}
+
+        {!settings.useImdb && !settings.useRt && (
+          <div className="filters__group">
+            <span className="filters__off">Rating filters are off — enable IMDb or Rotten Tomatoes in Settings.</span>
+          </div>
+        )}
 
         <div className="filters__group">
           <label htmlFor="svc">Streaming service</label>

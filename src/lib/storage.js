@@ -7,7 +7,10 @@ const DEFAULTS = {
   profile: null,          // { genres:{}, moods:{}, answers:{}, completedAt }
   ratings: {},            // key -> { key, title, type, rating, watchAgain, genres, moods, ratedAt }
   settings: {
-    minImdb: 7.0,
+    useImdb: true,        // is the IMDb rating system active?
+    minImdb: 7.0,         // minimum IMDb rating (0–10)
+    useRt: true,          // is the Rotten Tomatoes system active?
+    minRt: 60,            // minimum Rotten Tomatoes score (0–100)
     tmdbKey: '',
     omdbKey: '',
     prefLimit: 5,         // recommendations per category before "show more"

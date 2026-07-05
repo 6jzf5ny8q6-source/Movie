@@ -113,7 +113,8 @@ export async function fetchLiveCatalog(tmdbKey) {
   return items
 }
 
-// Optionally replace TMDB scores with true IMDb ratings via OMDb.
+// Optionally replace TMDB scores with true IMDb ratings and add Rotten
+// Tomatoes scores via OMDb.
 export async function enrichWithImdb(items, omdbKey, max = 20) {
   if (!omdbKey) return items
   const targets = items.slice(0, max)
@@ -122,12 +123,19 @@ export async function enrichWithImdb(items, omdbKey, max = 20) {
       try {
         const url = `https://www.omdbapi.com/?apikey=${omdbKey}&t=${encodeURIComponent(item.title)}${item.year ? `&y=${item.year}` : ''}`
         const data = await fetchJson(url)
+        if (data.Response !== 'True') return
         const rating = Number(data.imdbRating)
-        if (data.Response === 'True' && !Number.isNaN(rating) && rating > 0) {
+        if (!Number.isNaN(rating) && rating > 0) {
           item.imdb = rating
           item.ratingSource = 'IMDb'
-          if (data.Poster && data.Poster !== 'N/A') item.image = data.Poster
         }
+        // Rotten Tomatoes arrives in the Ratings array, e.g. "94%".
+        const rt = (data.Ratings || []).find((r) => r.Source === 'Rotten Tomatoes')
+        if (rt) {
+          const pct = Number(String(rt.Value).replace('%', ''))
+          if (!Number.isNaN(pct)) item.rt = pct
+        }
+        if (data.Poster && data.Poster !== 'N/A') item.image = data.Poster
       } catch {
         /* leave the TMDB score in place */
       }
