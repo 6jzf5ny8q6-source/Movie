@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { CATALOG, SERVICES } from './data/catalog.js'
 import { store, titleKey } from './lib/storage.js'
 import { buildProfileFromQuiz, buildTasteProfile } from './lib/recommender.js'
-import { fetchLiveCatalog, enrichWithImdb } from './lib/tmdb.js'
+import { fetchLiveCatalog, enrichProviders, enrichWithImdb } from './lib/tmdb.js'
 
 import IntroAnimation from './components/IntroAnimation.jsx'
 import Quiz from './components/Quiz.jsx'
@@ -143,12 +143,21 @@ export default function App() {
       setLive({ loading: false, message: 'Add a TMDB key in Settings to fetch fresh titles.', error: true })
       return
     }
-    setLive({ loading: true, message: 'Fetching current titles…', error: false })
+    setLive({ loading: true, message: 'Fetching titles matched to your taste…', error: false })
     try {
-      let items = await fetchLiveCatalog(settings.tmdbKey)
+      // Bias the pool toward the user's favorite genres (across all years).
+      const topGenres = Object.entries(taste.genres || {})
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([g]) => g)
+
+      let items = await fetchLiveCatalog(settings.tmdbKey, { genres: topGenres })
+      // Real streaming location for each title, then true IMDb/RT if OMDb keyed.
+      items = await enrichProviders(items, settings.tmdbKey)
       items = await enrichWithImdb(items, settings.omdbKey)
       setLiveItems(items)
-      setLive({ loading: false, message: `Loaded ${items.length} fresh titles.`, error: false })
+      setLive({ loading: false, message: `Loaded ${items.length} titles across all years, ranked to your taste.`, error: false })
     } catch (err) {
       setLive({ loading: false, message: err.message || 'Could not fetch updates.', error: true })
     }
