@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <rect width="32" height="32" fill="#0b0d17"/>
+  <!-- film reel / play pixel motif -->
+  <rect x="6" y="6" width="20" height="20" fill="#f5c451"/>
+  <rect x="9" y="9" width="14" height="14" fill="#0b0d17"/>
+  <rect x="13" y="11" width="2" height="10" fill="#f5c451"/>
+  <rect x="15" y="12" width="2" height="8" fill="#f5c451"/>
+  <rect x="17" y="13" width="2" height="6" fill="#f5c451"/>
+  <rect x="19" y="14" width="2" height="4" fill="#f5c451"/>
+</svg>
