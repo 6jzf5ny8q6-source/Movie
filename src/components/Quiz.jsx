@@ -11,7 +11,10 @@ export default function Quiz({ initialAnswers, onComplete, onCancel }) {
   const total = QUIZ.length
   const selectedIndex = answers[q.id]?._i
 
-  const choose = (opt, i) => {
+  const choose = (opt, i, e) => {
+    // Drop focus from the clicked button so its focus/hover styling can't
+    // carry over onto the next question.
+    e?.currentTarget?.blur()
     const next = { ...answers, [q.id]: { ...opt, _i: i } }
     setAnswers(next)
     // brief pause so the selection is visible, then advance
@@ -37,9 +40,9 @@ export default function Quiz({ initialAnswers, onComplete, onCancel }) {
       <div className="quiz__options">
         {q.options.map((opt, i) => (
           <button
-            key={i}
+            key={`${q.id}-${i}`}
             className={`quiz__option ${selectedIndex === i ? 'is-selected' : ''}`}
-            onClick={() => choose(opt, i)}
+            onClick={(e) => choose(opt, i, e)}
           >
             <span className="quiz__optletter">{String.fromCharCode(65 + i)}</span>
             <span>{opt.label}</span>

@@ -151,8 +151,11 @@ a { color: var(--teal); }
   font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
   transition: transform 0.1s, border-color 0.15s, background 0.15s;
 }
-.quiz__option:hover { border-color: var(--gold); background: var(--surface-2); transform: translateX(3px); }
-.quiz__option.is-selected { border-color: var(--gold); background: rgba(245, 196, 81, 0.12); }
+/* Hover is a subtle lift only — the gold accent is reserved for a committed
+   selection so an option under the cursor never looks pre-selected. */
+.quiz__option:hover { border-color: var(--surface-3); background: var(--surface-2); transform: translateX(3px); }
+.quiz__option:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.quiz__option.is-selected { border-color: var(--gold); background: rgba(245, 196, 81, 0.12); box-shadow: inset 3px 0 0 var(--gold); }
 .quiz__optletter {
   flex: none; display: grid; place-items: center; width: 30px; height: 30px;
   border-radius: 8px; background: var(--surface-3); color: var(--gold); font-weight: 800; font-size: 14px;
