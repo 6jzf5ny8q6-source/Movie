@@ -13,6 +13,7 @@ export default function Discover({
   watchlist,
   hasProfile,
   services,
+  region,
   live,
   onRate,
   onWatchlist,
@@ -69,6 +70,7 @@ export default function Discover({
               reason={explain(item, taste)}
               inWatchlist={inWatch(item)}
               ratingPrefs={ratingPrefs}
+              region={region}
               onRate={onRate}
               onWatchlist={onWatchlist}
               onDismiss={onDismiss}

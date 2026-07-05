@@ -16,6 +16,7 @@ const DEFAULTS = {
     omdbKey: '',
     prefLimit: 5,         // recommendations per category before "show more"
     services: [],         // optional service filter (empty = all)
+    region: 'auto',       // streaming-availability region ('auto' = detect)
   },
   watchlist: {},          // key -> item snapshot
   removed: {},            // key -> item snapshot of dismissed recommendations

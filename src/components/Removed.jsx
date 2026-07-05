@@ -5,7 +5,7 @@ import SortedLibrary from './SortedLibrary.jsx'
 // Titles the user dismissed from recommendations. They're kept here so they can
 // be added back into rotation whenever the user changes their mind. Searchable
 // and grouped into Movies / TV Shows, sortable by IMDb or Rotten Tomatoes.
-export default function Removed({ removed, ratingPrefs, onRestore }) {
+export default function Removed({ removed, ratingPrefs, region, onRestore }) {
   const { useImdb = true, useRt = true } = ratingPrefs || {}
   const [query, setQuery] = useState('')
 
@@ -64,6 +64,7 @@ export default function Removed({ removed, ratingPrefs, onRestore }) {
                   item={item}
                   variant="removed"
                   ratingPrefs={ratingPrefs}
+                  region={region}
                   onRestore={onRestore}
                 />
               )}

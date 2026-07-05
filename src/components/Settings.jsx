@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { REGIONS, detectRegion, regionName } from '../lib/region.js'
 
 // Settings: the global IMDb rating filter, default number of recommendations,
-// optional API keys for live updates, and data management.
+// streaming region, optional API keys for live updates, and data management.
 export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onReplayIntro }) {
   const [tmdbKey, setTmdbKey] = useState(settings.tmdbKey)
   const [omdbKey, setOmdbKey] = useState(settings.omdbKey)
+  const detected = detectRegion()
 
   return (
     <section className="settings">
@@ -90,13 +92,36 @@ export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onR
         </div>
       </div>
 
+      <div className="setting">
+        <div className="setting__text">
+          <h3>Your region</h3>
+          <p>
+            Used to check whether a title is streaming where you are, and on
+            which service. “Auto-detect” uses your browser’s locale
+            {settings.region === 'auto' ? ` (detected: ${regionName(detected)})` : ''}.
+          </p>
+        </div>
+        <div className="setting__control">
+          <select
+            value={settings.region}
+            onChange={(e) => onPatch({ region: e.target.value })}
+          >
+            <option value="auto">Auto-detect ({detected})</option>
+            {REGIONS.map((r) => (
+              <option key={r.code} value={r.code}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="setting setting--block">
         <div className="setting__text">
           <h3>Live updates (optional)</h3>
           <p>
             Add a free{' '}
             <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">TMDB API key</a>{' '}
-            to pull in current trending and now-playing titles. Add an{' '}
+            to pull in titles from across all years (ranked to your taste), each
+            with its real streaming service and a watch link for your region. Add an{' '}
             <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noreferrer">OMDb key</a>{' '}
             to enrich them with true IMDb ratings and Rotten Tomatoes scores. Keys are stored only in your browser.
           </p>

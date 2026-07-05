@@ -21,10 +21,10 @@ function route(url) {
   if (url.includes('/tv/top_rated')) {
     return { results: [{ id: 11, name: 'Old Show', first_air_date: '2001-06-03', genre_ids: [80], vote_average: 9.1, overview: 'o' }] }
   }
-  if (url.includes('/movie/1/watch/providers')) return { results: { US: { flatrate: [{ provider_name: 'Netflix' }] } } }
-  if (url.includes('/movie/2/watch/providers')) return { results: { US: { rent: [{ provider_name: 'Apple TV' }] } } }
-  if (url.includes('/movie/3/watch/providers')) return { results: {} }
-  if (url.includes('/watch/providers')) return { results: { US: { flatrate: [{ provider_name: 'HBO Max' }] } } }
+  if (url.includes('/movie/1/watch/providers')) return { results: { US: { link: 'https://jw/us/movie1', flatrate: [{ provider_name: 'Netflix' }] } } }
+  if (url.includes('/movie/2/watch/providers')) return { results: { US: { link: 'https://jw/us/movie2', rent: [{ provider_name: 'Apple TV' }] } } }
+  if (url.includes('/movie/3/watch/providers')) return { results: { GB: { flatrate: [{ provider_name: 'Netflix' }] } } } // not in US
+  if (url.includes('/watch/providers')) return { results: { US: { link: 'https://jw/us/tv', flatrate: [{ provider_name: 'HBO Max' }] } } }
   if (url.includes('omdbapi.com')) {
     return { Response: 'True', imdbRating: '8.5', Ratings: [{ Source: 'Rotten Tomatoes', Value: '93%' }] }
   }
@@ -56,14 +56,16 @@ describe('fetchLiveCatalog', () => {
 })
 
 describe('enrichProviders', () => {
-  it('sets the real streaming provider, with sensible fallbacks', async () => {
+  it('sets the region-specific provider + watch link, with fallbacks', async () => {
     const items = await fetchLiveCatalog('KEY', {})
     await enrichProviders(items, 'KEY', 'US')
     const byId = Object.fromEntries(items.map((i) => [i._tmdbId, i]))
     expect(byId[1].service).toBe('Netflix')
-    expect(byId[2].service).toBe('Rent or buy')       // only rent available
-    expect(byId[3].service).toBe('Not currently streaming') // nothing available
-    expect(byId[10].service).toBe('Max')               // HBO Max -> Max label
+    expect(byId[1].watchLink).toBe('https://jw/us/movie1')
+    expect(byId[2].service).toBe('Rent or buy')            // only rent in US
+    expect(byId[3].service).toBe('Not on streaming in US') // only available in GB
+    expect(byId[3].watchLink).toBeNull()
+    expect(byId[10].service).toBe('Max')                   // HBO Max -> Max label
   })
 })
 

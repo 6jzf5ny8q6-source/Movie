@@ -6,7 +6,7 @@ import SortedLibrary from './SortedLibrary.jsx'
 // "My Ratings": track what you've watched, score it, and mark watch-again.
 // Grouped into Movies and TV Shows, and sortable by your personal score, IMDb,
 // or Rotten Tomatoes. These ratings feed straight back into the recommender.
-export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemove }) {
+export default function Ratings({ catalog, ratings, ratingPrefs, region, onRate, onRemove }) {
   const { useImdb = true, useRt = true } = ratingPrefs || {}
   const [query, setQuery] = useState('')
   const [manual, setManual] = useState(false)
@@ -96,6 +96,7 @@ export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemov
               item={item}
               variant="rated"
               ratingPrefs={ratingPrefs}
+              region={region}
               onRate={onRate}
               onRemove={onRemove}
             />

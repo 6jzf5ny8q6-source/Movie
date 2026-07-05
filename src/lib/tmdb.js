@@ -165,29 +165,34 @@ export async function fetchLiveCatalog(tmdbKey, opts = {}) {
   return items
 }
 
-// Fetch the real streaming location for each title from TMDB's watch/providers.
-// Prefers the given region's subscription (flatrate) providers, falling back to
-// any region that has them, then to rent/buy.
+// Fetch the real streaming location for each title in the user's region from
+// TMDB's watch/providers, and capture the deep link to the title's watch page.
+// Region-specific: a title that isn't offered in the user's region is marked as
+// such rather than pretending it's available elsewhere.
 export async function enrichProviders(items, tmdbKey, region = 'US') {
   if (!tmdbKey) return items
   await mapPool(items, async (item) => {
     if (!item._tmdbId) return
     const url = `${TMDB}/${item._tmdbType}/${item._tmdbId}/watch/providers?api_key=${tmdbKey}`
     const data = await fetchJson(url)
-    const regions = data.results || {}
-    const pick = (r) => regions[r]?.flatrate?.[0]?.provider_name
+    const rd = (data.results || {})[region]
 
-    let name = pick(region) || pick('US') || pick('GB')
-    if (!name) {
-      // any region offering a subscription option
-      for (const r of Object.keys(regions)) { name = pick(r); if (name) break }
-    }
-    if (name) {
-      item.service = tidyProvider(name)
+    item.watchRegion = region
+    if (rd?.flatrate?.length) {
+      // Subscription streaming — show up to two providers.
+      const names = rd.flatrate.slice(0, 2).map((p) => tidyProvider(p.provider_name))
+      item.service = [...new Set(names)].join(' · ')
+      item.watchLink = rd.link || null
+    } else if (rd?.ads?.length || rd?.free?.length) {
+      const p = (rd.free || rd.ads)[0]
+      item.service = `${tidyProvider(p.provider_name)} (free)`
+      item.watchLink = rd.link || null
+    } else if (rd?.rent?.length || rd?.buy?.length) {
+      item.service = 'Rent or buy'
+      item.watchLink = rd.link || null
     } else {
-      const local = regions[region] || regions.US || Object.values(regions)[0]
-      if (local?.rent?.length || local?.buy?.length) item.service = 'Rent or buy'
-      else item.service = 'Not currently streaming'
+      item.service = `Not on streaming in ${region}`
+      item.watchLink = null
     }
   })
   return items

@@ -1,4 +1,5 @@
 import PixelPoster from './PixelPoster.jsx'
+import { watchSearchUrl } from '../lib/region.js'
 
 // A single movie/show card used across Discover and Ratings.
 // `variant`:
@@ -10,6 +11,7 @@ export default function TitleCard({
   reason,
   inWatchlist,
   ratingPrefs = { useImdb: true, useRt: true },
+  region = 'US',
   onRate,
   onWatchlist,
   onRemove,
@@ -49,7 +51,15 @@ export default function TitleCard({
         {item.service && (
           <p className="card__where">
             <span className="card__wherelabel">Where to watch</span>
-            <span className="card__service">▶ {item.service}</span>
+            <a
+              className="card__service"
+              href={item.watchLink || watchSearchUrl(item.title, item.watchRegion || region)}
+              target="_blank"
+              rel="noreferrer"
+              title={`Open “${item.title}” on ${item.service}`}
+            >
+              ▶ {item.service} <span className="card__ext">↗</span>
+            </a>
           </p>
         )}
 

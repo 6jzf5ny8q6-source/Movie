@@ -3,6 +3,7 @@ import { CATALOG, SERVICES } from './data/catalog.js'
 import { store, titleKey } from './lib/storage.js'
 import { buildProfileFromQuiz, buildTasteProfile } from './lib/recommender.js'
 import { fetchLiveCatalog, enrichProviders, enrichWithImdb } from './lib/tmdb.js'
+import { resolveRegion } from './lib/region.js'
 
 import IntroAnimation from './components/IntroAnimation.jsx'
 import Quiz from './components/Quiz.jsx'
@@ -78,6 +79,7 @@ export default function App() {
   )
 
   const taste = useMemo(() => buildTasteProfile(profile, ratings), [profile, ratings])
+  const region = useMemo(() => resolveRegion(settings.region), [settings.region])
 
   // ---- ratings ----
   const openRate = (item) => setRateTarget(item)
@@ -153,11 +155,11 @@ export default function App() {
         .map(([g]) => g)
 
       let items = await fetchLiveCatalog(settings.tmdbKey, { genres: topGenres })
-      // Real streaming location for each title, then true IMDb/RT if OMDb keyed.
-      items = await enrichProviders(items, settings.tmdbKey)
+      // Real streaming location in the user's region, then true IMDb/RT if keyed.
+      items = await enrichProviders(items, settings.tmdbKey, region)
       items = await enrichWithImdb(items, settings.omdbKey)
       setLiveItems(items)
-      setLive({ loading: false, message: `Loaded ${items.length} titles across all years, ranked to your taste.`, error: false })
+      setLive({ loading: false, message: `Loaded ${items.length} titles for ${region}, ranked to your taste.`, error: false })
     } catch (err) {
       setLive({ loading: false, message: err.message || 'Could not fetch updates.', error: true })
     }
@@ -239,6 +241,7 @@ export default function App() {
             watchlist={watchlist}
             hasProfile={Boolean(profile)}
             services={services}
+            region={region}
             live={live}
             onRate={openRate}
             onWatchlist={toggleWatchlist}
@@ -256,6 +259,7 @@ export default function App() {
             catalog={catalog}
             ratings={ratings}
             ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            region={region}
             onRate={openRate}
             onRemove={removeRating}
           />
@@ -266,6 +270,7 @@ export default function App() {
             watchlist={watchlist}
             ratings={ratings}
             ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            region={region}
             onRate={openRate}
             onRemove={removeWatchlist}
             onBrowse={() => setView('discover')}
@@ -276,6 +281,7 @@ export default function App() {
           <Removed
             removed={removed}
             ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            region={region}
             onRestore={restore}
           />
         )}

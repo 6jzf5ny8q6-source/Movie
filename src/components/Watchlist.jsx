@@ -5,7 +5,7 @@ import SortedLibrary from './SortedLibrary.jsx'
 // The user's watchlist — titles they've saved to watch. Searchable, grouped
 // into Movies and TV Shows, and sortable by IMDb or Rotten Tomatoes. Rating a
 // title marks it watched and removes it from here.
-export default function Watchlist({ watchlist, ratingPrefs, onRate, onRemove, onBrowse }) {
+export default function Watchlist({ watchlist, ratingPrefs, region, onRate, onRemove, onBrowse }) {
   const { useImdb = true, useRt = true } = ratingPrefs || {}
   const [query, setQuery] = useState('')
 
@@ -75,6 +75,7 @@ export default function Watchlist({ watchlist, ratingPrefs, onRate, onRemove, on
                   item={item}
                   variant="watchlist"
                   ratingPrefs={ratingPrefs}
+                  region={region}
                   onRate={onRate}
                   onRemove={onRemove}
                 />
