@@ -1,8 +1,9 @@
 name: Deploy CineMatch to GitHub Pages
 
+# Runs on demand. Before the first run, enable Pages once:
+#   Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Then run this workflow (Actions tab → this workflow → "Run workflow").
 on:
-  push:
-    branches: [claude/streaming-quiz-recommender-0v2yp6]
   workflow_dispatch:
 
 permissions:
@@ -27,8 +28,6 @@ jobs:
       # Build with a base path matching the project Pages URL (/<repo>/).
       - run: npx vite build --base=/${{ github.event.repository.name }}/
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
