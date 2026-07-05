@@ -97,6 +97,16 @@ export default function TitleCard({
               </button>
             </>
           )}
+          {variant === 'watchlist' && (
+            <>
+              <button className="btn btn--primary" onClick={() => onRate?.(item)}>
+                Rate / mark watched
+              </button>
+              <button className="btn btn--danger" onClick={() => onRemove?.(item)}>
+                ✕ Remove
+              </button>
+            </>
+          )}
           {variant === 'removed' && (
             <button className="btn btn--primary" onClick={() => onRestore?.(item)}>
               ↩ Add back to recommendations

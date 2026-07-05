@@ -8,6 +8,7 @@ import IntroAnimation from './components/IntroAnimation.jsx'
 import Quiz from './components/Quiz.jsx'
 import Discover from './components/Discover.jsx'
 import Ratings from './components/Ratings.jsx'
+import Watchlist from './components/Watchlist.jsx'
 import Removed from './components/Removed.jsx'
 import Settings from './components/Settings.jsx'
 import RatingModal from './components/RatingModal.jsx'
@@ -15,10 +16,29 @@ import RatingModal from './components/RatingModal.jsx'
 const NAV = [
   { id: 'discover', label: 'Discover', icon: '✦' },
   { id: 'ratings', label: 'My Ratings', icon: '★' },
+  { id: 'watchlist', label: 'Watchlist', icon: '＋' },
   { id: 'removed', label: 'Not Interested', icon: '✕' },
   { id: 'quiz', label: 'Taste Quiz', icon: '?' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
 ]
+
+// Build a full snapshot of a title so any list can display + sort it later.
+function snapshot(item) {
+  return {
+    key: titleKey(item),
+    title: item.title,
+    type: item.type,
+    year: item.year,
+    genres: item.genres || [],
+    moods: item.moods || [],
+    imdb: item.imdb || 0,
+    rt: item.rt ?? null,
+    service: item.service,
+    poster: item.poster,
+    image: item.image || null,
+    overview: item.overview || '',
+  }
+}
 
 export default function App() {
   const initial = store.getAll()
@@ -64,24 +84,15 @@ export default function App() {
   const saveRating = ({ rating, watchAgain }) => {
     const item = rateTarget
     const key = titleKey(item)
-    const record = {
-      key,
-      title: item.title,
-      type: item.type,
-      year: item.year,
-      genres: item.genres || [],
-      moods: item.moods || [],
-      imdb: item.imdb || 0,
-      rt: item.rt ?? null,
-      service: item.service,
-      poster: item.poster,
-      image: item.image || null,
-      overview: item.overview || '',
-      rating,
-      watchAgain,
-      ratedAt: Date.now(),
-    }
+    const record = { ...snapshot(item), rating, watchAgain, ratedAt: Date.now() }
     setRatings(store.upsertRating(record))
+    // Once watched + rated, it no longer belongs on the watchlist.
+    if (watchlist[key]) {
+      const next = { ...watchlist }
+      delete next[key]
+      setWatchlist(next)
+      store.set('watchlist', next)
+    }
     setRateTarget(null)
     flash(`Saved “${item.title}” — ${rating}/10`)
   }
@@ -96,29 +107,24 @@ export default function App() {
     const key = titleKey(item)
     const next = { ...watchlist }
     if (next[key]) { delete next[key]; flash('Removed from watchlist') }
-    else { next[key] = { title: item.title, type: item.type }; flash('Added to watchlist') }
+    else { next[key] = { ...snapshot(item), addedAt: Date.now() }; flash(`Added “${item.title}” to watchlist`) }
     setWatchlist(next)
     store.set('watchlist', next)
+  }
+
+  const removeWatchlist = (item) => {
+    const key = item.key || titleKey(item)
+    const next = { ...watchlist }
+    delete next[key]
+    setWatchlist(next)
+    store.set('watchlist', next)
+    flash('Removed from watchlist')
   }
 
   // ---- dismissed recommendations ----
   const dismiss = (item) => {
     const key = titleKey(item)
-    const snapshot = {
-      key,
-      title: item.title,
-      type: item.type,
-      year: item.year,
-      genres: item.genres || [],
-      moods: item.moods || [],
-      imdb: item.imdb || 0,
-      rt: item.rt ?? null,
-      service: item.service,
-      poster: item.poster,
-      image: item.image || null,
-      overview: item.overview || '',
-    }
-    setRemoved(store.addRemoved(key, snapshot))
+    setRemoved(store.addRemoved(key, snapshot(item)))
     flash(`Hidden “${item.title}” — find it under Not Interested`)
   }
 
@@ -234,6 +240,17 @@ export default function App() {
             ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
             onRate={openRate}
             onRemove={removeRating}
+          />
+        )}
+
+        {view === 'watchlist' && (
+          <Watchlist
+            watchlist={watchlist}
+            ratings={ratings}
+            ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            onRate={openRate}
+            onRemove={removeWatchlist}
+            onBrowse={() => setView('discover')}
           />
         )}
 

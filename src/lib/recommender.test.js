@@ -98,6 +98,13 @@ describe('scoreItem + recommend', () => {
     expect(recs.length).toBe(2)
   })
 
+  it('excludes watchlisted titles', () => {
+    const watchlist = { 'movie:space epic:2020': { key: 'movie:space epic:2020', title: 'Space Epic' } }
+    const recs = recommend(catalog, taste, { minImdb: 0, watchlist })
+    expect(recs.find((r) => r.title === 'Space Epic')).toBeUndefined()
+    expect(recs.length).toBe(2)
+  })
+
   it('honors the limit', () => {
     const recs = recommend(catalog, taste, { minImdb: 0, limit: 1 })
     expect(recs.length).toBe(1)

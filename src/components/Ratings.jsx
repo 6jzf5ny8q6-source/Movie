@@ -1,20 +1,27 @@
 import { useMemo, useState } from 'react'
 import { GENRES } from '../data/catalog.js'
 import TitleCard from './TitleCard.jsx'
+import SortedLibrary from './SortedLibrary.jsx'
 
 // "My Ratings": track what you've watched, score it, and mark watch-again.
-// These ratings feed straight back into the recommendation engine.
+// Grouped into Movies and TV Shows, and sortable by your personal score, IMDb,
+// or Rotten Tomatoes. These ratings feed straight back into the recommender.
 export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemove }) {
+  const { useImdb = true, useRt = true } = ratingPrefs || {}
   const [query, setQuery] = useState('')
   const [manual, setManual] = useState(false)
 
   const ratedList = useMemo(
-    () =>
-      Object.values(ratings)
-        .sort((a, b) => (b.ratedAt || 0) - (a.ratedAt || 0))
-        .map((r) => ({ ...r, id: r.key, userRating: r.rating })),
+    () => Object.values(ratings).map((r) => ({ ...r, id: r.key, userRating: r.rating })),
     [ratings],
   )
+
+  const sortOptions = [
+    { key: 'recent', label: 'Recently rated', compare: (a, b) => (b.ratedAt || 0) - (a.ratedAt || 0) },
+    { key: 'personal', label: 'My rating (high → low)', compare: (a, b) => (b.rating || 0) - (a.rating || 0) },
+    ...(useImdb ? [{ key: 'imdb', label: 'IMDb rating (high → low)', compare: (a, b) => (b.imdb || 0) - (a.imdb || 0) }] : []),
+    ...(useRt ? [{ key: 'rt', label: 'Rotten Tomatoes (high → low)', compare: (a, b) => (b.rt || 0) - (a.rt || 0) }] : []),
+  ]
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -79,8 +86,11 @@ export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemov
           You haven’t rated anything yet. Search above to add your first watched title.
         </p>
       ) : (
-        <div className="grid">
-          {ratedList.map((item) => (
+        <SortedLibrary
+          items={ratedList}
+          sortOptions={sortOptions}
+          defaultSort="recent"
+          renderCard={(item) => (
             <TitleCard
               key={item.id}
               item={item}
@@ -89,8 +99,8 @@ export default function Ratings({ catalog, ratings, ratingPrefs, onRate, onRemov
               onRate={onRate}
               onRemove={onRemove}
             />
-          ))}
-        </div>
+          )}
+        />
       )}
     </section>
   )
