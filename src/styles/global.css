@@ -328,7 +328,16 @@ a { color: var(--teal); }
 .ratings__intro p, .removed__intro p { color: var(--muted); margin: 0 0 14px; max-width: 620px; }
 .removed__intro { margin-bottom: 22px; }
 
-/* sort control shared by My Ratings + Watchlist */
+/* library search box (Not Interested tab) */
+.libsearch {
+  width: 100%; background: var(--surface); border: 1px solid var(--line);
+  color: var(--text); border-radius: 10px; padding: 12px 16px; font: inherit;
+  margin-bottom: 18px;
+}
+.libsearch::placeholder { color: var(--faint); }
+.libsearch:focus { outline: none; border-color: var(--teal); }
+
+/* sort control shared by My Ratings + Watchlist + Not Interested */
 .sortbar { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 .sortbar label { color: var(--muted); font-size: 13px; font-weight: 600; }
 .sortbar select {
