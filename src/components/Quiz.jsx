@@ -4,7 +4,7 @@ import { selectQuiz } from '../data/quizQuestions.js'
 // The taste quiz. Draws a fresh, randomized set of questions each time it
 // mounts (so a retake asks new questions) and always starts with no prior
 // answers. Hands the answer map back to App, which builds a taste profile.
-export default function Quiz({ onComplete, onCancel }) {
+export default function Quiz({ onComplete, onCancel, cancelLabel = 'Cancel' }) {
   const [questions] = useState(() => selectQuiz(12))
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -57,7 +57,7 @@ export default function Quiz({ onComplete, onCancel }) {
           className="btn btn--ghost"
           onClick={() => (step > 0 ? setStep(step - 1) : onCancel?.())}
         >
-          {step > 0 ? '‹ Back' : 'Cancel'}
+          {step > 0 ? '‹ Back' : cancelLabel}
         </button>
         <span className="quiz__hint">Pick the answer that feels most like you.</span>
       </div>

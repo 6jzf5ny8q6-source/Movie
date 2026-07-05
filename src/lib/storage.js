@@ -4,6 +4,7 @@
 const NS = 'cinematch.v1'
 
 const DEFAULTS = {
+  onboarded: false,       // has this visitor been shown the intro quiz before?
   profile: null,          // { genres:{}, moods:{}, answers:{}, completedAt }
   ratings: {},            // key -> { key, title, type, rating, watchAgain, genres, moods, ratedAt }
   settings: {

@@ -43,7 +43,8 @@ function snapshot(item) {
 export default function App() {
   const initial = store.getAll()
   const [showIntro, setShowIntro] = useState(true) // plays on every open
-  const [view, setView] = useState(initial.profile ? 'discover' : 'discover')
+  // First-ever visit lands on the quiz; every visit after that opens on Discover.
+  const [view, setView] = useState(initial.onboarded ? 'discover' : 'quiz')
 
   const [profile, setProfile] = useState(initial.profile)
   const [ratings, setRatings] = useState(initial.ratings)
@@ -159,8 +160,16 @@ export default function App() {
     const next = { ...built, answers, completedAt: Date.now() }
     setProfile(next)
     store.set('profile', next)
+    store.set('onboarded', true)
     setView('discover')
     flash('Taste profile updated ✦')
+  }
+
+  // Leaving the quiz (skip/cancel) still counts as onboarded, so we don't force
+  // the quiz on every future visit.
+  const leaveQuiz = () => {
+    store.set('onboarded', true)
+    setView('discover')
   }
 
   // Start a fresh quiz: wipe the stored past answers so nothing carries over
@@ -183,7 +192,7 @@ export default function App() {
     setSettings(s.settings)
     setWatchlist(s.watchlist)
     setLiveItems([])
-    setView('discover')
+    setView('quiz') // reset returns the app to a fresh new-user experience
     flash('All data reset')
   }
 
@@ -265,7 +274,8 @@ export default function App() {
         {view === 'quiz' && (
           <Quiz
             onComplete={completeQuiz}
-            onCancel={() => setView('discover')}
+            onCancel={leaveQuiz}
+            cancelLabel={profile ? 'Cancel' : 'Skip for now'}
           />
         )}
 
