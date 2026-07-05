@@ -8,12 +8,14 @@ import IntroAnimation from './components/IntroAnimation.jsx'
 import Quiz from './components/Quiz.jsx'
 import Discover from './components/Discover.jsx'
 import Ratings from './components/Ratings.jsx'
+import Removed from './components/Removed.jsx'
 import Settings from './components/Settings.jsx'
 import RatingModal from './components/RatingModal.jsx'
 
 const NAV = [
   { id: 'discover', label: 'Discover', icon: '✦' },
   { id: 'ratings', label: 'My Ratings', icon: '★' },
+  { id: 'removed', label: 'Not Interested', icon: '✕' },
   { id: 'quiz', label: 'Taste Quiz', icon: '?' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
 ]
@@ -25,6 +27,7 @@ export default function App() {
 
   const [profile, setProfile] = useState(initial.profile)
   const [ratings, setRatings] = useState(initial.ratings)
+  const [removed, setRemoved] = useState(initial.removed)
   const [settings, setSettings] = useState(initial.settings)
   const [watchlist, setWatchlist] = useState(initial.watchlist)
   const [liveItems, setLiveItems] = useState([])
@@ -98,6 +101,32 @@ export default function App() {
     store.set('watchlist', next)
   }
 
+  // ---- dismissed recommendations ----
+  const dismiss = (item) => {
+    const key = titleKey(item)
+    const snapshot = {
+      key,
+      title: item.title,
+      type: item.type,
+      year: item.year,
+      genres: item.genres || [],
+      moods: item.moods || [],
+      imdb: item.imdb || 0,
+      rt: item.rt ?? null,
+      service: item.service,
+      poster: item.poster,
+      image: item.image || null,
+      overview: item.overview || '',
+    }
+    setRemoved(store.addRemoved(key, snapshot))
+    flash(`Hidden “${item.title}” — find it under Not Interested`)
+  }
+
+  const restore = (item) => {
+    setRemoved(store.restoreRemoved(item.key || titleKey(item)))
+    flash(`“${item.title}” back in recommendations`)
+  }
+
   // ---- settings ----
   const patchSettings = (patch) => setSettings(store.patchSettings(patch))
 
@@ -128,11 +157,23 @@ export default function App() {
     flash('Taste profile updated ✦')
   }
 
+  // Start a fresh quiz: wipe the stored past answers so nothing carries over
+  // (the quiz also draws a brand-new set of questions each time).
+  const retakeQuiz = () => {
+    if (profile?.answers) {
+      const cleared = { ...profile, answers: {} }
+      setProfile(cleared)
+      store.set('profile', cleared)
+    }
+    setView('quiz')
+  }
+
   const resetAll = () => {
     if (!window.confirm('Reset your quiz, ratings, watchlist and settings?')) return
     const s = store.reset()
     setProfile(s.profile)
     setRatings(s.ratings)
+    setRemoved(s.removed)
     setSettings(s.settings)
     setWatchlist(s.watchlist)
     setLiveItems([])
@@ -154,7 +195,7 @@ export default function App() {
             <button
               key={n.id}
               className={`nav__item ${view === n.id ? 'is-active' : ''}`}
-              onClick={() => setView(n.id)}
+              onClick={() => (n.id === 'quiz' ? retakeQuiz() : setView(n.id))}
             >
               <span className="nav__icon">{n.icon}</span>
               <span className="nav__label">{n.label}</span>
@@ -169,6 +210,7 @@ export default function App() {
             catalog={catalog}
             taste={taste}
             ratings={ratings}
+            removed={removed}
             settings={settings}
             watchlist={watchlist}
             hasProfile={Boolean(profile)}
@@ -176,11 +218,12 @@ export default function App() {
             live={live}
             onRate={openRate}
             onWatchlist={toggleWatchlist}
+            onDismiss={dismiss}
             onSetMinImdb={(v) => patchSettings({ minImdb: v })}
             onSetMinRt={(v) => patchSettings({ minRt: v })}
             onSetServices={(v) => patchSettings({ services: v })}
             onRefreshLive={refreshLive}
-            onTakeQuiz={() => setView('quiz')}
+            onTakeQuiz={retakeQuiz}
           />
         )}
 
@@ -194,9 +237,16 @@ export default function App() {
           />
         )}
 
+        {view === 'removed' && (
+          <Removed
+            removed={removed}
+            ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            onRestore={restore}
+          />
+        )}
+
         {view === 'quiz' && (
           <Quiz
-            initialAnswers={profile?.answers}
             onComplete={completeQuiz}
             onCancel={() => setView('discover')}
           />
@@ -207,7 +257,7 @@ export default function App() {
             settings={settings}
             onPatch={patchSettings}
             onReset={resetAll}
-            onRetakeQuiz={() => setView('quiz')}
+            onRetakeQuiz={retakeQuiz}
             onReplayIntro={() => setShowIntro(true)}
           />
         )}

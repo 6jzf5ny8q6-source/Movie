@@ -13,6 +13,8 @@ export default function TitleCard({
   onRate,
   onWatchlist,
   onRemove,
+  onDismiss,
+  onRestore,
 }) {
   const { useImdb = true, useRt = true } = ratingPrefs
   const imdbSource = item.ratingSource === 'TMDB' ? 'TMDB score' : 'IMDb rating'
@@ -76,6 +78,13 @@ export default function TitleCard({
               >
                 {inWatchlist ? '✓ In watchlist' : '＋ Watchlist'}
               </button>
+              <button
+                className="btn btn--dismiss"
+                onClick={() => onDismiss?.(item)}
+                title="Hide this and stop recommending it"
+              >
+                ✕ Not interested
+              </button>
             </>
           )}
           {variant === 'rated' && (
@@ -87,6 +96,11 @@ export default function TitleCard({
                 Remove
               </button>
             </>
+          )}
+          {variant === 'removed' && (
+            <button className="btn btn--primary" onClick={() => onRestore?.(item)}>
+              ↩ Add back to recommendations
+            </button>
           )}
         </div>
       </div>

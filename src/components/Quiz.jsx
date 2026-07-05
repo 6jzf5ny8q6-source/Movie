@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { QUIZ } from '../data/quizQuestions.js'
+import { selectQuiz } from '../data/quizQuestions.js'
 
-// The 12-question taste quiz. Collects one option per question and hands the
-// answer map back to App, which turns it into a taste profile.
-export default function Quiz({ initialAnswers, onComplete, onCancel }) {
+// The taste quiz. Draws a fresh, randomized set of questions each time it
+// mounts (so a retake asks new questions) and always starts with no prior
+// answers. Hands the answer map back to App, which builds a taste profile.
+export default function Quiz({ onComplete, onCancel }) {
+  const [questions] = useState(() => selectQuiz(12))
   const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState(initialAnswers || {})
+  const [answers, setAnswers] = useState({})
 
-  const q = QUIZ[step]
-  const total = QUIZ.length
+  const q = questions[step]
+  const total = questions.length
   const selectedIndex = answers[q.id]?._i
 
   const choose = (opt, i, e) => {
@@ -37,7 +39,7 @@ export default function Quiz({ initialAnswers, onComplete, onCancel }) {
 
       <h2 className="quiz__prompt">{q.prompt}</h2>
 
-      <div className="quiz__options">
+      <div className="quiz__options" key={q.id}>
         {q.options.map((opt, i) => (
           <button
             key={`${q.id}-${i}`}

@@ -8,6 +8,7 @@ export default function Discover({
   catalog,
   taste,
   ratings,
+  removed,
   settings,
   watchlist,
   hasProfile,
@@ -15,6 +16,7 @@ export default function Discover({
   live,
   onRate,
   onWatchlist,
+  onDismiss,
   onSetMinImdb,
   onSetMinRt,
   onSetServices,
@@ -27,6 +29,7 @@ export default function Discover({
 
   const common = {
     ratings,
+    removed,
     useImdb: settings.useImdb,
     minImdb: settings.minImdb,
     useRt: settings.useRt,
@@ -34,7 +37,7 @@ export default function Discover({
     services: settings.services,
   }
   const ratingPrefs = { useImdb: settings.useImdb, useRt: settings.useRt }
-  const deps = [catalog, taste, ratings, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services]
+  const deps = [catalog, taste, ratings, removed, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services]
 
   const movies = useMemo(
     () => recommend(catalog, taste, { ...common, type: 'movie' }),
@@ -67,6 +70,7 @@ export default function Discover({
               ratingPrefs={ratingPrefs}
               onRate={onRate}
               onWatchlist={onWatchlist}
+              onDismiss={onDismiss}
             />
           ))}
         </div>

@@ -76,6 +76,7 @@ export function scoreItem(item, taste, ratingPrefs = { useImdb: true, useRt: tru
 export function recommend(catalog, taste, opts = {}) {
   const {
     ratings = {},
+    removed = {},
     useImdb = true,
     minImdb = 0,
     useRt = true,
@@ -85,7 +86,8 @@ export function recommend(catalog, taste, opts = {}) {
     limit = Infinity,
   } = opts
 
-  const seen = new Set(Object.keys(ratings))
+  // Exclude titles the user has already rated or explicitly dismissed.
+  const seen = new Set([...Object.keys(ratings), ...Object.keys(removed)])
   const serviceSet = new Set(services)
   const ratingPrefs = { useImdb, useRt }
 

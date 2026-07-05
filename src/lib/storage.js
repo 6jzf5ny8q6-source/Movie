@@ -17,6 +17,7 @@ const DEFAULTS = {
     services: [],         // optional service filter (empty = all)
   },
   watchlist: {},          // key -> item snapshot
+  removed: {},            // key -> item snapshot of dismissed recommendations
 }
 
 function read() {
@@ -76,6 +77,21 @@ export const store = {
     s.ratings = rest
     write(s)
     return s.ratings
+  },
+
+  addRemoved(key, snapshot) {
+    const s = read()
+    s.removed = { ...s.removed, [key]: { ...snapshot, removedAt: Date.now() } }
+    write(s)
+    return s.removed
+  },
+
+  restoreRemoved(key) {
+    const s = read()
+    const { [key]: _, ...rest } = s.removed
+    s.removed = rest
+    write(s)
+    return s.removed
   },
 
   reset() {
