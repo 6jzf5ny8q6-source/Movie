@@ -1,17 +1,24 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import TitleCard from './TitleCard.jsx'
 import SortedLibrary from './SortedLibrary.jsx'
 
-// The user's watchlist — titles they've saved to watch. Grouped into Movies and
-// TV Shows and sortable by IMDb or Rotten Tomatoes. Rating a title marks it
-// watched and removes it from here.
+// The user's watchlist — titles they've saved to watch. Searchable, grouped
+// into Movies and TV Shows, and sortable by IMDb or Rotten Tomatoes. Rating a
+// title marks it watched and removes it from here.
 export default function Watchlist({ watchlist, ratingPrefs, onRate, onRemove, onBrowse }) {
   const { useImdb = true, useRt = true } = ratingPrefs || {}
+  const [query, setQuery] = useState('')
 
   const list = useMemo(
     () => Object.values(watchlist).map((w) => ({ ...w, id: w.key })),
     [watchlist],
   )
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((i) => i.title.toLowerCase().includes(q))
+  }, [list, query])
 
   const sortOptions = [
     { key: 'added', label: 'Recently added', compare: (a, b) => (b.addedAt || 0) - (a.addedAt || 0) },
@@ -46,21 +53,35 @@ export default function Watchlist({ watchlist, ratingPrefs, onRate, onRemove, on
           <button className="linkbtn" onClick={onBrowse}>Browse recommendations ›</button>
         </p>
       ) : (
-        <SortedLibrary
-          items={list}
-          sortOptions={sortOptions}
-          defaultSort="added"
-          renderCard={(item) => (
-            <TitleCard
-              key={item.id}
-              item={item}
-              variant="watchlist"
-              ratingPrefs={ratingPrefs}
-              onRate={onRate}
-              onRemove={onRemove}
+        <>
+          <input
+            className="libsearch"
+            type="text"
+            placeholder="Search your watchlist…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+
+          {filtered.length === 0 ? (
+            <p className="empty">No watchlist titles match “{query}”.</p>
+          ) : (
+            <SortedLibrary
+              items={filtered}
+              sortOptions={sortOptions}
+              defaultSort="added"
+              renderCard={(item) => (
+                <TitleCard
+                  key={item.id}
+                  item={item}
+                  variant="watchlist"
+                  ratingPrefs={ratingPrefs}
+                  onRate={onRate}
+                  onRemove={onRemove}
+                />
+              )}
             />
           )}
-        />
+        </>
       )}
     </section>
   )
