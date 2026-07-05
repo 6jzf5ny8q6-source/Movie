@@ -58,7 +58,24 @@ export default function TitleCard({
               rel="noreferrer"
               title={`Open “${item.title}” on ${item.service}`}
             >
-              ▶ {item.service} <span className="card__ext">↗</span>
+              {item.providers?.length ? (
+                item.providers.map((pv) =>
+                  pv.logo ? (
+                    <img
+                      key={pv.name}
+                      className="card__provlogo"
+                      src={pv.logo}
+                      alt={pv.name}
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  ) : null,
+                )
+              ) : (
+                <span aria-hidden="true">▶</span>
+              )}
+              <span>{item.service}</span>
+              <span className="card__ext">↗</span>
             </a>
           </p>
         )}

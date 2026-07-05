@@ -21,7 +21,7 @@ function route(url) {
   if (url.includes('/tv/top_rated')) {
     return { results: [{ id: 11, name: 'Old Show', first_air_date: '2001-06-03', genre_ids: [80], vote_average: 9.1, overview: 'o' }] }
   }
-  if (url.includes('/movie/1/watch/providers')) return { results: { US: { link: 'https://jw/us/movie1', flatrate: [{ provider_name: 'Netflix' }] } } }
+  if (url.includes('/movie/1/watch/providers')) return { results: { US: { link: 'https://jw/us/movie1', flatrate: [{ provider_name: 'Netflix', logo_path: '/nflx.jpg' }] } } }
   if (url.includes('/movie/2/watch/providers')) return { results: { US: { link: 'https://jw/us/movie2', rent: [{ provider_name: 'Apple TV' }] } } }
   if (url.includes('/movie/3/watch/providers')) return { results: { GB: { flatrate: [{ provider_name: 'Netflix' }] } } } // not in US
   if (url.includes('/watch/providers')) return { results: { US: { link: 'https://jw/us/tv', flatrate: [{ provider_name: 'HBO Max' }] } } }
@@ -62,6 +62,7 @@ describe('enrichProviders', () => {
     const byId = Object.fromEntries(items.map((i) => [i._tmdbId, i]))
     expect(byId[1].service).toBe('Netflix')
     expect(byId[1].watchLink).toBe('https://jw/us/movie1')
+    expect(byId[1].providers[0]).toEqual({ name: 'Netflix', logo: 'https://image.tmdb.org/t/p/w45/nflx.jpg' })
     expect(byId[2].service).toBe('Rent or buy')            // only rent in US
     expect(byId[3].service).toBe('Not on streaming in US') // only available in GB
     expect(byId[3].watchLink).toBeNull()

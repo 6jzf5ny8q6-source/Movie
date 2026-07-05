@@ -9,6 +9,7 @@ import { GENRES, MOODS } from '../data/catalog.js'
 
 const TMDB = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p/w342'
+const LOGO = 'https://image.tmdb.org/t/p/w45' // small provider logos
 
 // TMDB genre ids -> our genre vocabulary (for normalizing results).
 const GENRE_MAP = {
@@ -177,15 +178,23 @@ export async function enrichProviders(items, tmdbKey, region = 'US') {
     const data = await fetchJson(url)
     const rd = (data.results || {})[region]
 
+    const toProvider = (p) => ({
+      name: tidyProvider(p.provider_name),
+      logo: p.logo_path ? `${LOGO}${p.logo_path}` : null,
+    })
+
     item.watchRegion = region
+    item.providers = []
     if (rd?.flatrate?.length) {
-      // Subscription streaming — show up to two providers.
-      const names = rd.flatrate.slice(0, 2).map((p) => tidyProvider(p.provider_name))
-      item.service = [...new Set(names)].join(' · ')
+      // Subscription streaming — show up to two providers with their logos.
+      const list = rd.flatrate.slice(0, 2).map(toProvider)
+      item.providers = list
+      item.service = [...new Set(list.map((p) => p.name))].join(' · ')
       item.watchLink = rd.link || null
-    } else if (rd?.ads?.length || rd?.free?.length) {
-      const p = (rd.free || rd.ads)[0]
-      item.service = `${tidyProvider(p.provider_name)} (free)`
+    } else if (rd?.free?.length || rd?.ads?.length) {
+      const p = toProvider((rd.free || rd.ads)[0])
+      item.providers = [p]
+      item.service = `${p.name} (free)`
       item.watchLink = rd.link || null
     } else if (rd?.rent?.length || rd?.buy?.length) {
       item.service = 'Rent or buy'
