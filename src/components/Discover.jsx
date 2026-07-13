@@ -29,6 +29,7 @@ export default function Discover({
   onSetMinImdb,
   onSetMinRt,
   onSetServices,
+  onPatchSettings,
   onRefreshLive,
   onTakeQuiz,
 }) {
@@ -38,6 +39,9 @@ export default function Discover({
   const [moods, setMoods] = useState([])       // tonight's mood filter
   const [runtime, setRuntime] = useState('any') // movie length filter
   const [rerollN, setRerollN] = useState(0)     // bumps to pick a new spotlight
+
+  const showMovies = settings.showMovies !== false
+  const showShows = settings.showShows !== false
 
   const common = {
     ratings,
@@ -56,16 +60,19 @@ export default function Discover({
 
   const all = useMemo(() => recommend(catalog, taste, { ...common, type: 'all' }), deps) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Spotlight: a random strong match from the top of the list (rerollable).
+  // Only recommend from the types the user has switched on.
+  const enabled = all.filter((i) => (i.type === 'movie' ? showMovies : showShows))
+
+  // Spotlight: a random strong match from the top of the enabled list.
   const surprise = useMemo(() => {
-    if (!all.length) return null
-    const top = all.slice(0, Math.min(20, all.length))
+    if (!enabled.length) return null
+    const top = enabled.slice(0, Math.min(20, enabled.length))
     return top[Math.floor(Math.random() * top.length)]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, rerollN])
+  }, [all, rerollN, showMovies, showShows])
 
-  const movies = all.filter((i) => i.type === 'movie' && i.id !== surprise?.id)
-  const shows = all.filter((i) => i.type === 'show' && i.id !== surprise?.id)
+  const movies = showMovies ? all.filter((i) => i.type === 'movie' && i.id !== surprise?.id) : []
+  const shows = showShows ? all.filter((i) => i.type === 'show' && i.id !== surprise?.id) : []
 
   const inWatch = (item) => Boolean(watchlist[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
   const toggleMood = (m) => setMoods((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]))
@@ -163,6 +170,26 @@ export default function Discover({
           </select>
         </div>
 
+        <div className="filters__group">
+          <label>Show me</label>
+          <div className="typetoggles">
+            <button
+              className={`toggle ${showMovies ? 'is-on' : ''}`}
+              onClick={() => onPatchSettings({ showMovies: !showMovies })}
+              aria-pressed={showMovies}
+            >
+              <span className="toggle__dot" /> Movies
+            </button>
+            <button
+              className={`toggle ${showShows ? 'is-on' : ''}`}
+              onClick={() => onPatchSettings({ showShows: !showShows })}
+              aria-pressed={showShows}
+            >
+              <span className="toggle__dot" /> TV Shows
+            </button>
+          </div>
+        </div>
+
         <div className="filters__group filters__group--live">
           <button className="btn btn--outline" onClick={onRefreshLive} disabled={live.loading}>
             {live.loading ? 'Fetching…' : '⟳ Get fresh titles'}
@@ -195,8 +222,13 @@ export default function Discover({
         </div>
       )}
 
-      <Section label="Movies for you" items={movies} limit={movieLimit} setLimit={setMovieLimit} />
-      <Section label="TV shows for you" items={shows} limit={showLimit} setLimit={setShowLimit} />
+      {!showMovies && !showShows && (
+        <p className="empty empty--big">
+          Both movies and TV are switched off. Turn one on above to see recommendations.
+        </p>
+      )}
+      {showMovies && <Section label="Movies for you" items={movies} limit={movieLimit} setLimit={setMovieLimit} />}
+      {showShows && <Section label="TV shows for you" items={shows} limit={showLimit} setLimit={setShowLimit} />}
     </section>
   )
 }

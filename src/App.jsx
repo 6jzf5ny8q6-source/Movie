@@ -288,6 +288,7 @@ export default function App() {
             onSetMinImdb={(v) => patchSettings({ minImdb: v })}
             onSetMinRt={(v) => patchSettings({ minRt: v })}
             onSetServices={(v) => patchSettings({ services: v })}
+            onPatchSettings={patchSettings}
             onRefreshLive={refreshLive}
             onTakeQuiz={retakeQuiz}
           />

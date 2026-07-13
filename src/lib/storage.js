@@ -17,6 +17,8 @@ const DEFAULTS = {
     prefLimit: 5,         // recommendations per category before "show more"
     services: [],         // optional service filter (empty = all)
     region: 'auto',       // streaming-availability region ('auto' = detect)
+    showMovies: true,     // include movie recommendations
+    showShows: true,      // include TV recommendations
   },
   watchlist: {},          // key -> item snapshot
   removed: {},            // key -> item snapshot of dismissed recommendations
