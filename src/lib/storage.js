@@ -4,16 +4,25 @@
 const NS = 'cinematch.v1'
 
 const DEFAULTS = {
+  onboarded: false,       // has this visitor been shown the intro quiz before?
   profile: null,          // { genres:{}, moods:{}, answers:{}, completedAt }
   ratings: {},            // key -> { key, title, type, rating, watchAgain, genres, moods, ratedAt }
   settings: {
-    minImdb: 7.0,
+    useImdb: true,        // is the IMDb rating system active?
+    minImdb: 7.0,         // minimum IMDb rating (0–10)
+    useRt: true,          // is the Rotten Tomatoes system active?
+    minRt: 60,            // minimum Rotten Tomatoes score (0–100)
     tmdbKey: '',
     omdbKey: '',
     prefLimit: 5,         // recommendations per category before "show more"
     services: [],         // optional service filter (empty = all)
+    region: 'auto',       // streaming-availability region ('auto' = detect)
+    showMovies: true,     // include movie recommendations
+    showShows: true,      // include TV recommendations
   },
   watchlist: {},          // key -> item snapshot
+  removed: {},            // key -> item snapshot of dismissed recommendations
+  liveCache: null,        // { items: [], fetchedAt } — cached online catalog
 }
 
 function read() {
@@ -75,8 +84,35 @@ export const store = {
     return s.ratings
   },
 
+  addRemoved(key, snapshot) {
+    const s = read()
+    s.removed = { ...s.removed, [key]: { ...snapshot, removedAt: Date.now() } }
+    write(s)
+    return s.removed
+  },
+
+  restoreRemoved(key) {
+    const s = read()
+    const { [key]: _, ...rest } = s.removed
+    s.removed = rest
+    write(s)
+    return s.removed
+  },
+
   reset() {
     write({ ...DEFAULTS })
+    return read()
+  },
+
+  // Replace all state from an imported backup object.
+  importAll(obj) {
+    if (!obj || typeof obj !== 'object') throw new Error('Not a valid CineMatch backup')
+    const merged = {
+      ...DEFAULTS,
+      ...obj,
+      settings: { ...DEFAULTS.settings, ...(obj.settings || {}) },
+    }
+    write(merged)
     return read()
   },
 }

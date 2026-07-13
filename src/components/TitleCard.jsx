@@ -1,4 +1,6 @@
 import PixelPoster from './PixelPoster.jsx'
+import { watchSearchUrl } from '../lib/region.js'
+import { imdbUrl, rtUrl } from '../lib/links.js'
 
 // A single movie/show card used across Discover and Ratings.
 // `variant`:
@@ -9,12 +11,18 @@ export default function TitleCard({
   variant = 'discover',
   reason,
   inWatchlist,
+  ratingPrefs = { useImdb: true, useRt: true },
+  region = 'US',
   onRate,
   onWatchlist,
   onRemove,
+  onDismiss,
+  onRestore,
 }) {
-  const rating = item.imdb ? item.imdb.toFixed(1) : '—'
-  const source = item.ratingSource || 'IMDb'
+  const { useImdb = true, useRt = true } = ratingPrefs
+  const imdbSource = item.ratingSource === 'TMDB' ? 'TMDB score' : 'IMDb rating'
+  const showImdb = useImdb && item.imdb != null && item.imdb > 0
+  const showRt = useRt && item.rt != null
 
   return (
     <article className="card">
@@ -26,14 +34,64 @@ export default function TitleCard({
         </header>
 
         <div className="card__meta">
-          <span className="badge badge--rating" title={`${source} rating`}>
-            ★ {rating}
-          </span>
-          <span className="badge badge--service">{item.service}</span>
+          {showImdb && (
+            <a
+              className="badge badge--imdb badge--link"
+              href={imdbUrl(item)}
+              target="_blank"
+              rel="noreferrer"
+              title={`${imdbSource} — open on IMDb`}
+            >
+              IMDb {item.imdb.toFixed(1)} <span className="badge__ext">↗</span>
+            </a>
+          )}
+          {showRt && (
+            <a
+              className="badge badge--rt badge--link"
+              href={rtUrl(item)}
+              target="_blank"
+              rel="noreferrer"
+              title="Open on Rotten Tomatoes"
+            >
+              🍅 {item.rt}% <span className="badge__ext">↗</span>
+            </a>
+          )}
           {(item.genres || []).slice(0, 3).map((g) => (
             <span key={g} className="badge badge--genre">{g}</span>
           ))}
         </div>
+
+        {item.service && (
+          <p className="card__where">
+            <span className="card__wherelabel">Where to watch</span>
+            <a
+              className="card__service"
+              href={item.watchLink || watchSearchUrl(item.title, item.watchRegion || region)}
+              target="_blank"
+              rel="noreferrer"
+              title={`Open “${item.title}” on ${item.service}`}
+            >
+              {item.providers?.length ? (
+                item.providers.map((pv) =>
+                  pv.logo ? (
+                    <img
+                      key={pv.name}
+                      className="card__provlogo"
+                      src={pv.logo}
+                      alt={pv.name}
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  ) : null,
+                )
+              ) : (
+                <span aria-hidden="true">▶</span>
+              )}
+              <span>{item.service}</span>
+              <span className="card__ext">↗</span>
+            </a>
+          </p>
+        )}
 
         {item.overview && <p className="card__overview">{item.overview}</p>}
 
@@ -60,6 +118,13 @@ export default function TitleCard({
               >
                 {inWatchlist ? '✓ In watchlist' : '＋ Watchlist'}
               </button>
+              <button
+                className="btn btn--dismiss"
+                onClick={() => onDismiss?.(item)}
+                title="Hide this and stop recommending it"
+              >
+                ✕ Not interested
+              </button>
             </>
           )}
           {variant === 'rated' && (
@@ -71,6 +136,21 @@ export default function TitleCard({
                 Remove
               </button>
             </>
+          )}
+          {variant === 'watchlist' && (
+            <>
+              <button className="btn btn--primary" onClick={() => onRate?.(item)}>
+                Rate / mark watched
+              </button>
+              <button className="btn btn--danger" onClick={() => onRemove?.(item)}>
+                ✕ Remove
+              </button>
+            </>
+          )}
+          {variant === 'removed' && (
+            <button className="btn btn--primary" onClick={() => onRestore?.(item)}>
+              ↩ Add back to recommendations
+            </button>
           )}
         </div>
       </div>
