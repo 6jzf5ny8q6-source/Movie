@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { REGIONS, detectRegion, regionName } from '../lib/region.js'
+import { validateTmdbKey, validateOmdbKey } from '../lib/tmdb.js'
 
 // Settings: the global IMDb rating filter, default number of recommendations,
 // streaming region, optional API keys for live updates, and data management.
@@ -7,6 +8,21 @@ export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onR
   const [tmdbKey, setTmdbKey] = useState(settings.tmdbKey)
   const [omdbKey, setOmdbKey] = useState(settings.omdbKey)
   const detected = detectRegion()
+
+  const [testing, setTesting] = useState(false)
+  const [status, setStatus] = useState(null)
+  const testKeys = async () => {
+    setTesting(true)
+    setStatus(null)
+    // Save current values first so a working key is what actually gets used.
+    onPatch({ tmdbKey: tmdbKey.trim(), omdbKey: omdbKey.trim() })
+    const [tmdb, omdb] = await Promise.all([
+      validateTmdbKey(tmdbKey.trim()),
+      validateOmdbKey(omdbKey.trim()),
+    ])
+    setStatus({ tmdb, omdb })
+    setTesting(false)
+  }
 
   return (
     <section className="settings">
@@ -147,6 +163,21 @@ export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onR
               onBlur={() => onPatch({ omdbKey: omdbKey.trim() })}
             />
           </label>
+        </div>
+        <div className="keytest">
+          <button className="btn btn--outline" onClick={testKeys} disabled={testing}>
+            {testing ? 'Testing…' : 'Test keys'}
+          </button>
+          {status && (
+            <div className="keytest__results">
+              <span className={`keystat keystat--${status.tmdb.ok === true ? 'ok' : status.tmdb.ok === null ? 'muted' : 'bad'}`}>
+                <strong>TMDB:</strong> {status.tmdb.message}
+              </span>
+              <span className={`keystat keystat--${status.omdb.ok === true ? 'ok' : status.omdb.ok === null ? 'muted' : 'bad'}`}>
+                <strong>OMDb:</strong> {status.omdb.message}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

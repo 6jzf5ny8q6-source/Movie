@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { fetchLiveCatalog, enrichProviders, enrichWithImdb } from './tmdb.js'
+import { fetchLiveCatalog, enrichProviders, enrichWithImdb, validateTmdbKey, validateOmdbKey } from './tmdb.js'
 
 // Canned TMDB/OMDb responses routed by URL, so we can verify parsing, the
 // across-all-years Discover pool, and real provider resolution without a key.
@@ -67,6 +67,40 @@ describe('enrichProviders', () => {
     expect(byId[3].service).toBe('Not on streaming in US') // only available in GB
     expect(byId[3].watchLink).toBeNull()
     expect(byId[10].service).toBe('Max')                   // HBO Max -> Max label
+  })
+})
+
+describe('key validation', () => {
+  it('reports a working TMDB key on 200', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ images: {} }) }))
+    expect((await validateTmdbKey('good')).ok).toBe(true)
+  })
+
+  it('reports an invalid TMDB key on 401 with a helpful hint', async () => {
+    global.fetch = vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) }))
+    const r = await validateTmdbKey('bad')
+    expect(r.ok).toBe(false)
+    expect(r.message).toMatch(/401|Read Access Token/i)
+  })
+
+  it('treats an empty TMDB key as not entered', async () => {
+    expect((await validateTmdbKey('')).ok).toBe(false)
+  })
+
+  it('reports a working OMDb key', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ Response: 'True', Title: 'Inception' }) }))
+    expect((await validateOmdbKey('good')).ok).toBe(true)
+  })
+
+  it('reports an invalid OMDb key with the API error', async () => {
+    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ Response: 'False', Error: 'Invalid API key!' }) }))
+    const r = await validateOmdbKey('bad')
+    expect(r.ok).toBe(false)
+    expect(r.message).toMatch(/Invalid API key/i)
+  })
+
+  it('treats a missing OMDb key as optional (null)', async () => {
+    expect((await validateOmdbKey('')).ok).toBe(null)
   })
 })
 

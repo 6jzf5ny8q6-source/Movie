@@ -108,6 +108,33 @@ async function fetchJson(url) {
   return res.json()
 }
 
+// Live-check a TMDB v3 API key against the API.
+export async function validateTmdbKey(key) {
+  if (!key) return { ok: false, message: 'No TMDB key entered.' }
+  try {
+    const res = await fetch(`${TMDB}/configuration?api_key=${encodeURIComponent(key)}`)
+    if (res.ok) return { ok: true, message: 'TMDB key is working ✓' }
+    if (res.status === 401) {
+      return { ok: false, message: 'TMDB rejected this key (401). Make sure it’s the v3 “API Key”, not the v4 Read Access Token.' }
+    }
+    return { ok: false, message: `TMDB returned an error (${res.status}).` }
+  } catch {
+    return { ok: false, message: 'Couldn’t reach TMDB (network/CORS). Try again on your normal connection.' }
+  }
+}
+
+// Live-check an OMDb key against the API.
+export async function validateOmdbKey(key) {
+  if (!key) return { ok: null, message: 'No OMDb key entered (optional).' }
+  try {
+    const data = await fetchJson(`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&t=inception`)
+    if (data.Response === 'True') return { ok: true, message: 'OMDb key is working ✓' }
+    return { ok: false, message: data.Error || 'OMDb rejected this key.' }
+  } catch {
+    return { ok: false, message: 'Couldn’t reach OMDb (network). Try again on your normal connection.' }
+  }
+}
+
 // Run an async worker over items with a bounded concurrency so we don't hammer
 // the API (TMDB throttles heavy bursts).
 async function mapPool(items, worker, concurrency = 12) {
