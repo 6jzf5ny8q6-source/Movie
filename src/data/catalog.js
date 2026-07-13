@@ -89,4 +89,18 @@ export const CATALOG = [
   show('Bluey', 2018, 9.4, 100, ['Animation', 'Family', 'Comedy'], ['feel-good', 'cozy', 'uplifting', 'funny'], 'Disney+', '#3a8a9a', 'A lovable Blue Heeler puppy and her family turn everyday life into imaginative play.'),
 ]
 
+// Real movie runtimes (minutes) so the "runtime" quick-filter works offline.
+// TV runtimes vary per episode, so shows are left null and always pass.
+const RUNTIMES = {
+  'The Shawshank Redemption': 142, 'The Dark Knight': 152, Inception: 148,
+  Parasite: 132, Interstellar: 169, 'Spider-Man: Into the Spider-Verse': 117,
+  Whiplash: 106, 'Mad Max: Fury Road': 120, 'La La Land': 128, 'Get Out': 104,
+  Coco: 105, 'The Grand Budapest Hotel': 99, 'Everything Everywhere All at Once': 139,
+  'Dune: Part Two': 166, Oppenheimer: 180, 'Knives Out': 130, 'Spirited Away': 125,
+  'The Social Network': 120, 'John Wick': 101, 'Little Women': 135,
+  'Blade Runner 2049': 164, 'The Menu': 107, 'Top Gun: Maverick': 130,
+  'Past Lives': 106, 'The Batman': 176,
+}
+for (const c of CATALOG) if (c.type === 'movie') c.runtime = RUNTIMES[c.title] ?? null
+
 export const SERVICES = [...new Set(CATALOG.map((c) => c.service))].sort()

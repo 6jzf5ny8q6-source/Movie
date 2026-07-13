@@ -10,6 +10,7 @@ import Quiz from './components/Quiz.jsx'
 import Discover from './components/Discover.jsx'
 import Ratings from './components/Ratings.jsx'
 import Watchlist from './components/Watchlist.jsx'
+import Insights from './components/Insights.jsx'
 import Removed from './components/Removed.jsx'
 import Settings from './components/Settings.jsx'
 import RatingModal from './components/RatingModal.jsx'
@@ -18,6 +19,7 @@ const NAV = [
   { id: 'discover', label: 'Discover', icon: '✦' },
   { id: 'ratings', label: 'My Ratings', icon: '★' },
   { id: 'watchlist', label: 'Watchlist', icon: '＋' },
+  { id: 'insights', label: 'Insights', icon: '📊' },
   { id: 'removed', label: 'Not Interested', icon: '✕' },
   { id: 'quiz', label: 'Taste Quiz', icon: '?' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
@@ -194,6 +196,43 @@ export default function App() {
     setView('quiz')
   }
 
+  // ---- import / export ----
+  const exportData = () => {
+    const data = store.getAll()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `cinematch-backup-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    flash('Backup exported')
+  }
+
+  const importData = (file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result))
+        const s = store.importAll(parsed)
+        setProfile(s.profile)
+        setRatings(s.ratings)
+        setRemoved(s.removed)
+        setSettings(s.settings)
+        setWatchlist(s.watchlist)
+        setLiveItems([])
+        setView('discover')
+        flash('Backup imported ✓')
+      } catch {
+        flash('That file isn’t a valid CineMatch backup')
+      }
+    }
+    reader.readAsText(file)
+  }
+
   const resetAll = () => {
     if (!window.confirm('Reset your quiz, ratings, watchlist and settings?')) return
     const s = store.reset()
@@ -277,6 +316,14 @@ export default function App() {
           />
         )}
 
+        {view === 'insights' && (
+          <Insights
+            ratings={ratings}
+            ratingPrefs={{ useImdb: settings.useImdb, useRt: settings.useRt }}
+            onBrowse={() => setView('ratings')}
+          />
+        )}
+
         {view === 'removed' && (
           <Removed
             removed={removed}
@@ -301,6 +348,8 @@ export default function App() {
             onReset={resetAll}
             onRetakeQuiz={retakeQuiz}
             onReplayIntro={() => setShowIntro(true)}
+            onExport={exportData}
+            onImportFile={importData}
           />
         )}
       </main>

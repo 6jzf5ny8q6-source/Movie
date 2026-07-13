@@ -6,6 +6,14 @@ import { titleKey } from './storage.js'
 
 const MOOD_WEIGHT = 0.6 // moods count a bit less than hard genre matches
 
+// Runtime buckets for the movie length filter.
+export function runtimeBucket(minutes) {
+  if (minutes == null) return null
+  if (minutes < 90) return 'short'
+  if (minutes <= 130) return 'medium'
+  return 'long'
+}
+
 // Build a preference vector { genres:{}, moods:{} } from quiz answers.
 // `answers` is a map of questionId -> selected option object.
 export function buildProfileFromQuiz(answers) {
@@ -84,6 +92,8 @@ export function recommend(catalog, taste, opts = {}) {
     minRt = 0,
     type = 'all',
     services = [],
+    moods = [],
+    runtime = 'any',
     limit = Infinity,
   } = opts
 
@@ -95,15 +105,22 @@ export function recommend(catalog, taste, opts = {}) {
     ...Object.keys(watchlist),
   ])
   const serviceSet = new Set(services)
+  const moodSet = new Set(moods)
   const ratingPrefs = { useImdb, useRt }
 
   const passesImdb = (item) => !useImdb || item.imdb == null || item.imdb >= minImdb
   const passesRt = (item) => !useRt || item.rt == null || item.rt >= minRt
+  const passesMood = (item) => moodSet.size === 0 || (item.moods || []).some((m) => moodSet.has(m))
+  // Runtime only constrains movies that have a known runtime; everything else passes.
+  const passesRuntime = (item) =>
+    runtime === 'any' || item.type !== 'movie' || item.runtime == null || runtimeBucket(item.runtime) === runtime
 
   const scored = catalog
     .filter((item) => type === 'all' || item.type === type)
     .filter(passesImdb)
     .filter(passesRt)
+    .filter(passesMood)
+    .filter(passesRuntime)
     .filter((item) => serviceSet.size === 0 || serviceSet.has(item.service))
     .filter((item) => !seen.has(titleKey(item)))
     .map((item) => ({ item, score: scoreItem(item, taste, ratingPrefs) }))

@@ -3,7 +3,7 @@ import { REGIONS, detectRegion, regionName } from '../lib/region.js'
 
 // Settings: the global IMDb rating filter, default number of recommendations,
 // streaming region, optional API keys for live updates, and data management.
-export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onReplayIntro }) {
+export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onReplayIntro, onExport, onImportFile }) {
   const [tmdbKey, setTmdbKey] = useState(settings.tmdbKey)
   const [omdbKey, setOmdbKey] = useState(settings.omdbKey)
   const detected = detectRegion()
@@ -145,6 +145,29 @@ export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onR
               placeholder="optional"
               onChange={(e) => setOmdbKey(e.target.value)}
               onBlur={() => onPatch({ omdbKey: omdbKey.trim() })}
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="setting setting--block">
+        <div className="setting__text">
+          <h3>Your data</h3>
+          <p>
+            Your quiz, ratings, watchlist and settings live only in this browser.
+            Export a backup to keep it safe, or import it into another browser or
+            device.
+          </p>
+        </div>
+        <div className="setting__keys">
+          <button className="btn btn--outline" onClick={onExport}>⤓ Export backup (JSON)</button>
+          <label className="btn btn--outline btn--file">
+            ⤒ Import backup
+            <input
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => { onImportFile(e.target.files?.[0]); e.target.value = '' }}
             />
           </label>
         </div>

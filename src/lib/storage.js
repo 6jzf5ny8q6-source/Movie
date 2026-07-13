@@ -100,6 +100,18 @@ export const store = {
     write({ ...DEFAULTS })
     return read()
   },
+
+  // Replace all state from an imported backup object.
+  importAll(obj) {
+    if (!obj || typeof obj !== 'object') throw new Error('Not a valid CineMatch backup')
+    const merged = {
+      ...DEFAULTS,
+      ...obj,
+      settings: { ...DEFAULTS.settings, ...(obj.settings || {}) },
+    }
+    write(merged)
+    return read()
+  },
 }
 
 // Stable key for a title so external + local titles dedupe consistently.

@@ -13,8 +13,8 @@ const answers = {
 }
 
 const catalog = [
-  { id: 'a', type: 'movie', title: 'Space Epic', year: 2020, imdb: 8.5, rt: 92, genres: ['Sci-Fi', 'Adventure'], moods: ['epic'], service: 'Netflix' },
-  { id: 'b', type: 'movie', title: 'Rom Com', year: 2019, imdb: 6.9, rt: 55, genres: ['Romance', 'Comedy'], moods: ['funny', 'romantic'], service: 'Hulu' },
+  { id: 'a', type: 'movie', title: 'Space Epic', year: 2020, imdb: 8.5, rt: 92, runtime: 160, genres: ['Sci-Fi', 'Adventure'], moods: ['epic'], service: 'Netflix' },
+  { id: 'b', type: 'movie', title: 'Rom Com', year: 2019, imdb: 6.9, rt: 55, runtime: 95, genres: ['Romance', 'Comedy'], moods: ['funny', 'romantic'], service: 'Hulu' },
   { id: 'c', type: 'show', title: 'Sci Show', year: 2021, imdb: 8.1, rt: 80, genres: ['Sci-Fi'], moods: ['epic'], service: 'Max' },
 ]
 
@@ -108,6 +108,19 @@ describe('scoreItem + recommend', () => {
   it('honors the limit', () => {
     const recs = recommend(catalog, taste, { minImdb: 0, limit: 1 })
     expect(recs.length).toBe(1)
+  })
+
+  it('filters by mood', () => {
+    const recs = recommend(catalog, taste, { minImdb: 0, moods: ['funny'] })
+    expect(recs.map((r) => r.title)).toEqual(['Rom Com'])
+  })
+
+  it('filters movies by runtime bucket, leaving shows unaffected', () => {
+    const recs = recommend(catalog, taste, { minImdb: 0, runtime: 'long' })
+    const titles = recs.map((r) => r.title)
+    expect(titles).toContain('Space Epic') // 160 min = long
+    expect(titles).toContain('Sci Show')   // show: no runtime, passes
+    expect(titles).not.toContain('Rom Com') // 95 min = medium
   })
 
   it('scores a matching item positively', () => {
