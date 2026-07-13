@@ -1,5 +1,6 @@
 import PixelPoster from './PixelPoster.jsx'
 import { watchSearchUrl } from '../lib/region.js'
+import { imdbUrl, rtUrl } from '../lib/links.js'
 
 // A single movie/show card used across Discover and Ratings.
 // `variant`:
@@ -34,14 +35,26 @@ export default function TitleCard({
 
         <div className="card__meta">
           {showImdb && (
-            <span className="badge badge--imdb" title={imdbSource}>
-              IMDb {item.imdb.toFixed(1)}
-            </span>
+            <a
+              className="badge badge--imdb badge--link"
+              href={imdbUrl(item)}
+              target="_blank"
+              rel="noreferrer"
+              title={`${imdbSource} — open on IMDb`}
+            >
+              IMDb {item.imdb.toFixed(1)} <span className="badge__ext">↗</span>
+            </a>
           )}
           {showRt && (
-            <span className="badge badge--rt" title="Rotten Tomatoes">
-              🍅 {item.rt}%
-            </span>
+            <a
+              className="badge badge--rt badge--link"
+              href={rtUrl(item)}
+              target="_blank"
+              rel="noreferrer"
+              title="Open on Rotten Tomatoes"
+            >
+              🍅 {item.rt}% <span className="badge__ext">↗</span>
+            </a>
           )}
           {(item.genres || []).slice(0, 3).map((g) => (
             <span key={g} className="badge badge--genre">{g}</span>

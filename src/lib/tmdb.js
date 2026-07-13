@@ -221,6 +221,7 @@ export async function enrichWithImdb(items, omdbKey, max = 48) {
       item.imdb = rating
       item.ratingSource = 'IMDb'
     }
+    if (data.imdbID) item.imdbId = data.imdbID // verified -> exact IMDb link
     const rt = (data.Ratings || []).find((r) => r.Source === 'Rotten Tomatoes')
     if (rt) {
       const pct = Number(String(rt.Value).replace('%', ''))

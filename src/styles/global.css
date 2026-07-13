@@ -255,6 +255,9 @@ a { color: var(--teal); }
 }
 .badge--imdb { background: rgba(245, 196, 81, 0.16); color: var(--gold-2); }
 .badge--rt { background: rgba(250, 90, 60, 0.16); color: #ff8a6a; }
+a.badge--link { text-decoration: none; cursor: pointer; transition: filter 0.15s; }
+a.badge--link:hover { filter: brightness(1.18); }
+.badge__ext { opacity: 0.6; font-size: 9px; }
 .badge--service { background: rgba(79, 209, 197, 0.14); color: var(--teal); }
 .badge--genre { background: var(--surface-2); color: var(--muted); }
 .badge--again { background: rgba(226, 103, 160, 0.16); color: var(--pink); }
@@ -336,7 +339,10 @@ a { color: var(--teal); }
   color: var(--muted); font-size: 26px; line-height: 1; cursor: pointer;
 }
 .modal__title { margin: 0 40px 2px 0; font-size: 21px; }
-.modal__sub { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+.modal__sub { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.modal__links { display: flex; gap: 14px; margin: 0 0 20px; font-size: 13px; font-weight: 700; }
+.modal__links a { color: var(--teal); text-decoration: none; }
+.modal__links a:hover { text-decoration: underline; }
 .modal__label { display: block; font-weight: 600; margin-bottom: 8px; }
 .modal__range { width: 100%; }
 .modal__scale { display: flex; gap: 5px; margin: 12px 0 20px; flex-wrap: wrap; }
