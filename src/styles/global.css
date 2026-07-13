@@ -194,6 +194,8 @@ a { color: var(--teal); }
 .live__msg { font-size: 12px; color: var(--muted); max-width: 220px; }
 .live__msg.is-error { color: #ff9a9a; }
 
+.notice--pool { border-color: rgba(245, 196, 81, 0.35); margin-bottom: 30px; }
+
 /* ---------- mood bar ---------- */
 .moodbar { display: flex; align-items: baseline; gap: 14px; margin: 0 0 26px; flex-wrap: wrap; }
 .moodbar__label { color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }

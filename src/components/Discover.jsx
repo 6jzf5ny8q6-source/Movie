@@ -39,6 +39,9 @@ export default function Discover({
   const [moods, setMoods] = useState([])       // tonight's mood filter
   const [runtime, setRuntime] = useState('any') // movie length filter
   const [rerollN, setRerollN] = useState(0)     // bumps to pick a new spotlight
+  // Per-visit seed: keeps this session's order stable but varies the mix
+  // between visits so recommendations don't feel frozen.
+  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 31))
 
   const showMovies = settings.showMovies !== false
   const showShows = settings.showShows !== false
@@ -54,6 +57,8 @@ export default function Discover({
     services: settings.services,
     moods,
     runtime,
+    explore: 0.4, // light seeded shuffle so each visit surfaces a fresh mix
+    seed,
   }
   const ratingPrefs = { useImdb: settings.useImdb, useRt: settings.useRt }
   const deps = [catalog, taste, ratings, removed, watchlist, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services, moods, runtime]
@@ -219,6 +224,17 @@ export default function Discover({
             <button className="btn btn--ghost" onClick={() => setRerollN((n) => n + 1)}>🎲 Surprise me again</button>
           </div>
           <div className="spotlight__card">{card(surprise)}</div>
+        </div>
+      )}
+
+      {!settings.tmdbKey && enabled.length < 12 && (showMovies || showShows) && (
+        <div className="notice notice--pool">
+          <div>
+            <strong>Running low on new picks.</strong> You’ve worked through most of
+            the built-in library that matches your filters. Add a free TMDB key in
+            Settings and CineMatch will pull in thousands more titles matched to
+            your taste — or relax a rating filter above.
+          </div>
         </div>
       )}
 

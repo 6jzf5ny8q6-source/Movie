@@ -14,6 +14,17 @@ export function runtimeBucket(minutes) {
   return 'long'
 }
 
+// Small deterministic PRNG so "explore" reshuffles are stable per seed.
+function mulberry32(seed) {
+  let a = seed >>> 0
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 // Build a preference vector { genres:{}, moods:{} } from quiz answers.
 // `answers` is a map of questionId -> selected option object.
 export function buildProfileFromQuiz(answers) {
@@ -115,7 +126,7 @@ export function recommend(catalog, taste, opts = {}) {
   const passesRuntime = (item) =>
     runtime === 'any' || item.type !== 'movie' || item.runtime == null || runtimeBucket(item.runtime) === runtime
 
-  const scored = catalog
+  let scored = catalog
     .filter((item) => type === 'all' || item.type === type)
     .filter(passesImdb)
     .filter(passesRt)
@@ -125,6 +136,17 @@ export function recommend(catalog, taste, opts = {}) {
     .filter((item) => !seen.has(titleKey(item)))
     .map((item) => ({ item, score: scoreItem(item, taste, ratingPrefs) }))
     .sort((a, b) => b.score - a.score || (b.item.imdb || 0) - (a.item.imdb || 0))
+
+  // Explore: gently jostle the ranking (seeded, so it's stable within a visit
+  // but different between visits). Items drift up to explore*10 positions, so
+  // strong matches stay near the top while the mix stays fresh.
+  const { explore = 0, seed = 1 } = opts
+  if (explore > 0 && scored.length > 1) {
+    const rng = mulberry32(seed)
+    scored = scored
+      .map((s, i) => ({ ...s, _k: i + rng() * explore * 10 }))
+      .sort((a, b) => a._k - b._k)
+  }
 
   const out = limit === Infinity ? scored : scored.slice(0, limit)
   return out.map(({ item, score }) => ({ ...item, score: Math.round(score * 100) / 100 }))

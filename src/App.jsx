@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATALOG, SERVICES } from './data/catalog.js'
 import { store, titleKey } from './lib/storage.js'
 import { buildProfileFromQuiz, buildTasteProfile } from './lib/recommender.js'
@@ -54,8 +54,11 @@ export default function App() {
   const [removed, setRemoved] = useState(initial.removed)
   const [settings, setSettings] = useState(initial.settings)
   const [watchlist, setWatchlist] = useState(initial.watchlist)
-  const [liveItems, setLiveItems] = useState([])
+  // Start from the cached online catalog so a stored TMDB key keeps working
+  // across visits without pressing "Get fresh titles" every time.
+  const [liveItems, setLiveItems] = useState(() => initial.liveCache?.items || [])
   const [live, setLive] = useState({ loading: false, message: '', error: false })
+  const autoFetched = useRef(false)
 
   const [rateTarget, setRateTarget] = useState(null)
   const [toast, setToast] = useState('')
@@ -161,11 +164,24 @@ export default function App() {
       items = await enrichProviders(items, settings.tmdbKey, region)
       items = await enrichWithImdb(items, settings.omdbKey)
       setLiveItems(items)
+      store.set('liveCache', { items, fetchedAt: Date.now() }) // survive reloads
       setLive({ loading: false, message: `Loaded ${items.length} titles for ${region}, ranked to your taste.`, error: false })
     } catch (err) {
       setLive({ loading: false, message: err.message || 'Could not fetch updates.', error: true })
     }
   }
+
+  // With a TMDB key stored, keep the online catalog active automatically:
+  // fetch on open when there's no cache yet or it's older than 24 hours.
+  useEffect(() => {
+    if (autoFetched.current || !settings.tmdbKey) return
+    const age = Date.now() - (initial.liveCache?.fetchedAt || 0)
+    if (!liveItems.length || age > 24 * 60 * 60 * 1000) {
+      autoFetched.current = true
+      refreshLive()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.tmdbKey])
 
   // ---- quiz ----
   const completeQuiz = (answers) => {

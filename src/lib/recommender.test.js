@@ -115,6 +115,20 @@ describe('scoreItem + recommend', () => {
     expect(recs.map((r) => r.title)).toEqual(['Rom Com'])
   })
 
+  it('explore keeps the same titles but is deterministic per seed', () => {
+    const base = recommend(catalog, taste, { minImdb: 0 })
+    const a1 = recommend(catalog, taste, { minImdb: 0, explore: 0.5, seed: 42 })
+    const a2 = recommend(catalog, taste, { minImdb: 0, explore: 0.5, seed: 42 })
+    expect(a1.map((r) => r.id)).toEqual(a2.map((r) => r.id)) // same seed -> same order
+    expect(new Set(a1.map((r) => r.id))).toEqual(new Set(base.map((r) => r.id))) // same set
+  })
+
+  it('explore=0 leaves the ranking untouched', () => {
+    const base = recommend(catalog, taste, { minImdb: 0 })
+    const same = recommend(catalog, taste, { minImdb: 0, explore: 0, seed: 7 })
+    expect(same.map((r) => r.id)).toEqual(base.map((r) => r.id))
+  })
+
   it('filters movies by runtime bucket, leaving shows unaffected', () => {
     const recs = recommend(catalog, taste, { minImdb: 0, runtime: 'long' })
     const titles = recs.map((r) => r.title)
