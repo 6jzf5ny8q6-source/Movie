@@ -8,8 +8,8 @@
 import { GENRES, MOODS } from '../data/catalog.js'
 
 const TMDB = 'https://api.themoviedb.org/3'
-const IMG = 'https://image.tmdb.org/t/p/w342'
-const LOGO = 'https://image.tmdb.org/t/p/w45' // small provider logos
+export const IMG = 'https://image.tmdb.org/t/p/w342'
+export const LOGO = 'https://image.tmdb.org/t/p/w45' // small provider logos
 
 // TMDB genre ids -> our genre vocabulary (for normalizing results).
 const GENRE_MAP = {
@@ -43,9 +43,9 @@ const PROVIDER_LABELS = {
   'Paramount+ with Showtime': 'Paramount+', 'Peacock Premium': 'Peacock',
   'Peacock Premium Plus': 'Peacock', 'Netflix Standard with Ads': 'Netflix',
 }
-const tidyProvider = (name) => PROVIDER_LABELS[name] || name
+export const tidyProvider = (name) => PROVIDER_LABELS[name] || name
 
-function inferMoods(genres, imdb) {
+export function inferMoods(genres, imdb) {
   const set = new Set()
   const has = (g) => genres.includes(g)
   if (has('Comedy')) { set.add('funny'); set.add('feel-good') }
@@ -61,7 +61,7 @@ function inferMoods(genres, imdb) {
   return [...set].filter((m) => MOODS.includes(m))
 }
 
-function mapGenres(ids = []) {
+export function mapGenres(ids = []) {
   const out = []
   for (const id of ids) {
     const g = GENRE_MAP[id]
@@ -71,7 +71,7 @@ function mapGenres(ids = []) {
 }
 
 const POSTER_COLORS = ['#3a4a63', '#5b7c99', '#7a6f5b', '#6a3b3b', '#4a7a5a', '#8a5a2a', '#3a3a5a']
-function colorFor(title) {
+export function colorFor(title) {
   let h = 0
   for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0
   return POSTER_COLORS[h % POSTER_COLORS.length]
@@ -137,7 +137,7 @@ export async function validateOmdbKey(key) {
 
 // Run an async worker over items with a bounded concurrency so we don't hammer
 // the API (TMDB throttles heavy bursts).
-async function mapPool(items, worker, concurrency = 12) {
+export async function mapPool(items, worker, concurrency = 12) {
   const queue = items.map((it, i) => [it, i])
   const run = async () => {
     while (queue.length) {
@@ -257,4 +257,34 @@ export async function enrichWithImdb(items, omdbKey, max = 48) {
     if (data.Poster && data.Poster !== 'N/A') item.image = data.Poster
   })
   return items
+}
+
+// "Because you loved ___" (live): for each loved seed title, find it on TMDB
+// and pull its recommendations — what viewers of that title actually watch.
+// Returns new items plus graph edges seedKey -> [titleKey].
+export async function fetchSeedRecommendations(tmdbKey, seeds = []) {
+  if (!tmdbKey || !seeds.length) return { items: [], graph: {} }
+  const k = `api_key=${tmdbKey}`
+  const items = []
+  const graph = {}
+  await mapPool(seeds.slice(0, 6), async (s) => {
+    const tmdbType = s.type === 'movie' ? 'movie' : 'tv'
+    let id = s._tmdbId
+    if (!id) {
+      const yearParam = s.year ? `&${tmdbType === 'movie' ? 'year' : 'first_air_date_year'}=${s.year}` : ''
+      const found = await fetchJson(`${TMDB}/search/${tmdbType}?${k}&query=${encodeURIComponent(s.title)}${yearParam}`)
+      id = found.results?.[0]?.id
+    }
+    if (!id) return
+    const recs = await fetchJson(`${TMDB}/${tmdbType}/${id}/recommendations?${k}`)
+    const keys = []
+    for (const raw of recs.results || []) {
+      const item = normalize(raw, tmdbType)
+      if (!item.title || item.imdb <= 0) continue
+      items.push(item)
+      keys.push(`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`)
+    }
+    graph[s.key] = keys
+  }, 4)
+  return { items, graph }
 }

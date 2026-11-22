@@ -18,6 +18,8 @@ export default function TitleCard({
   onRemove,
   onDismiss,
   onRestore,
+  liked = false,
+  onLike,
 }) {
   const { useImdb = true, useRt = true } = ratingPrefs
   const imdbSource = item.ratingSource === 'TMDB' ? 'TMDB score' : 'IMDb rating'
@@ -119,11 +121,19 @@ export default function TitleCard({
                 {inWatchlist ? '✓ In watchlist' : '＋ Watchlist'}
               </button>
               <button
+                className={`btn btn--like ${liked ? 'is-active' : ''}`}
+                onClick={() => onLike?.(item)}
+                aria-pressed={Boolean(liked)}
+                title="Show me more titles like this"
+              >
+                👍 {liked ? 'Liked' : 'More like this'}
+              </button>
+              <button
                 className="btn btn--dismiss"
                 onClick={() => onDismiss?.(item)}
-                title="Hide this and stop recommending it"
+                title="Hide this and show fewer like it"
               >
-                ✕ Not interested
+                👎 Not for me
               </button>
             </>
           )}

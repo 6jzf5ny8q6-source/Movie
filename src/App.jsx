@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATALOG, SERVICES } from './data/catalog.js'
 import { store, titleKey } from './lib/storage.js'
-import { buildProfileFromQuiz, buildTasteProfile } from './lib/recommender.js'
-import { fetchLiveCatalog, enrichProviders, enrichWithImdb } from './lib/tmdb.js'
+import { buildProfileFromQuiz, buildTasteProfile, pickSeeds } from './lib/recommender.js'
+import { fetchLiveCatalog, enrichProviders, enrichWithImdb, fetchSeedRecommendations } from './lib/tmdb.js'
 import { resolveRegion } from './lib/region.js'
+import { SHARED_URL, expandShared, mergeCatalog, graphFrom } from './lib/shared.js'
 
 import IntroAnimation from './components/IntroAnimation.jsx'
 import Quiz from './components/Quiz.jsx'
@@ -40,6 +41,9 @@ function snapshot(item) {
     poster: item.poster,
     image: item.image || null,
     overview: item.overview || '',
+    imdbId: item.imdbId,
+    _tmdbId: item._tmdbId,
+    _tmdbType: item._tmdbType,
   }
 }
 
@@ -57,8 +61,20 @@ export default function App() {
   // Start from the cached online catalog so a stored TMDB key keeps working
   // across visits without pressing "Get fresh titles" every time.
   const [liveItems, setLiveItems] = useState(() => initial.liveCache?.items || [])
+  const [liveGraph, setLiveGraph] = useState(() => initial.liveCache?.graph || {})
   const [live, setLive] = useState({ loading: false, message: '', error: false })
   const autoFetched = useRef(false)
+  const [feedback, setFeedback] = useState(initial.feedback || {})
+  // Shared library everyone gets for free (built daily by a GitHub Action).
+  const [shared, setShared] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch(SHARED_URL)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => { if (!cancelled && json?.items?.length) setShared(json) })
+      .catch(() => { /* offline or not published yet: the built-in catalog still works */ })
+    return () => { cancelled = true }
+  }, [])
 
   const [rateTarget, setRateTarget] = useState(null)
   const [toast, setToast] = useState('')
@@ -68,23 +84,37 @@ export default function App() {
     setTimeout(() => setToast(''), 2200)
   }
 
-  // Merge bundled catalog with any live titles, live winning on dedupe.
-  const catalog = useMemo(() => {
-    const map = new Map()
-    for (const item of [...liveItems, ...CATALOG]) {
-      const k = titleKey(item)
-      if (!map.has(k)) map.set(k, item)
-    }
-    return [...map.values()]
-  }, [liveItems])
+  const region = useMemo(() => resolveRegion(settings.region), [settings.region])
+
+  // Built-in catalog, then the shared library (region-accurate streaming +
+  // "people also watched" links), then the user's own live fetches on top.
+  const catalog = useMemo(
+    () => mergeCatalog(CATALOG, expandShared(shared, region), liveItems),
+    [shared, region, liveItems],
+  )
+  const graph = useMemo(() => graphFrom(catalog, liveGraph), [catalog, liveGraph])
 
   const services = useMemo(
-    () => [...new Set(catalog.map((c) => c.service))].sort(),
+    () => [...new Set(catalog.map((c) => c.service).filter((s) => s && !s.startsWith('Not on')))].sort(),
     [catalog],
   )
 
-  const taste = useMemo(() => buildTasteProfile(profile, ratings), [profile, ratings])
-  const region = useMemo(() => resolveRegion(settings.region), [settings.region])
+  // Taste learns from the quiz, ratings, AND everyday actions (hide, save, 👍).
+  const taste = useMemo(
+    () => buildTasteProfile(profile, ratings, { removed, watchlist, feedback }),
+    [profile, ratings, removed, watchlist, feedback],
+  )
+  const seeds = useMemo(() => pickSeeds(ratings, feedback), [ratings, feedback])
+
+  // ---- 👍 more like this ----
+  const toggleLike = (item) => {
+    const key = titleKey(item)
+    const next = { ...feedback }
+    if (next[key]) { delete next[key]; flash('Removed from your likes') }
+    else { next[key] = { ...snapshot(item), vote: 1, at: Date.now() }; flash(`Got it — more like “${item.title}”`) }
+    setFeedback(next)
+    store.set('feedback', next)
+  }
 
   // ---- ratings ----
   const openRate = (item) => setRateTarget(item)
@@ -162,9 +192,13 @@ export default function App() {
       let items = await fetchLiveCatalog(settings.tmdbKey, { genres: topGenres })
       // Real streaming location in the user's region, then true IMDb/RT if keyed.
       items = await enrichProviders(items, settings.tmdbKey, region)
-      items = await enrichWithImdb(items, settings.omdbKey)
+      // "Because you loved ___": what viewers of your favourites actually watch.
+      const seedRecs = await fetchSeedRecommendations(settings.tmdbKey, seeds).catch(() => ({ items: [], graph: {} }))
+      const seedItems = await enrichProviders(seedRecs.items, settings.tmdbKey, region)
+      items = await enrichWithImdb(mergeCatalog(items, seedItems), settings.omdbKey)
       setLiveItems(items)
-      store.set('liveCache', { items, fetchedAt: Date.now() }) // survive reloads
+      setLiveGraph(seedRecs.graph)
+      store.set('liveCache', { items, graph: seedRecs.graph, fetchedAt: Date.now() }) // survive reloads
       setLive({ loading: false, message: `Loaded ${items.length} titles for ${region}, ranked to your taste.`, error: false })
     } catch (err) {
       setLive({ loading: false, message: err.message || 'Could not fetch updates.', error: true })
@@ -237,6 +271,7 @@ export default function App() {
         setProfile(s.profile)
         setRatings(s.ratings)
         setRemoved(s.removed)
+        setFeedback(s.feedback || {})
         setSettings(s.settings)
         setWatchlist(s.watchlist)
         setLiveItems([])
@@ -255,6 +290,7 @@ export default function App() {
     setProfile(s.profile)
     setRatings(s.ratings)
     setRemoved(s.removed)
+    setFeedback(s.feedback || {})
     setSettings(s.settings)
     setWatchlist(s.watchlist)
     setLiveItems([])
@@ -301,6 +337,10 @@ export default function App() {
             onRate={openRate}
             onWatchlist={toggleWatchlist}
             onDismiss={dismiss}
+            onLike={toggleLike}
+            feedback={feedback}
+            seeds={seeds}
+            graph={graph}
             onSetMinImdb={(v) => patchSettings({ minImdb: v })}
             onSetMinRt={(v) => patchSettings({ minRt: v })}
             onSetServices={(v) => patchSettings({ services: v })}
@@ -373,6 +413,12 @@ export default function App() {
 
       <footer className="footer">
         <span>CineMatch · your taste, your list. Ratings &amp; preferences saved on this device.</span>
+        <span className="footer__attr">
+          This product uses the TMDB API but is not endorsed or certified by{' '}
+          <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>.
+          Streaming availability data provided by{' '}
+          <a href="https://www.justwatch.com/" target="_blank" rel="noreferrer">JustWatch</a>.
+        </span>
       </footer>
 
       {rateTarget && (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { recommend, explain } from '../lib/recommender.js'
+import { recommend, explain, seedAffinity } from '../lib/recommender.js'
 import { MOODS } from '../data/catalog.js'
 import TitleCard from './TitleCard.jsx'
 
@@ -26,6 +26,10 @@ export default function Discover({
   onRate,
   onWatchlist,
   onDismiss,
+  onLike,
+  feedback = {},
+  seeds = [],
+  graph = {},
   onSetMinImdb,
   onSetMinRt,
   onSetServices,
@@ -57,11 +61,14 @@ export default function Discover({
     services: settings.services,
     moods,
     runtime,
-    explore: 0.4, // light seeded shuffle so each visit surfaces a fresh mix
+    explore: 0.4,   // light seeded shuffle so each visit surfaces a fresh mix
     seed,
+    seeds,          // "because you loved" boost
+    graph,          // "people also watched" links
+    diversity: 0.3, // don't stack five near-identical picks in a row
   }
   const ratingPrefs = { useImdb: settings.useImdb, useRt: settings.useRt }
-  const deps = [catalog, taste, ratings, removed, watchlist, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services, moods, runtime]
+  const deps = [catalog, taste, ratings, removed, watchlist, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services, moods, runtime, seeds, graph]
 
   const all = useMemo(() => recommend(catalog, taste, { ...common, type: 'all' }), deps) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,8 +83,31 @@ export default function Discover({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, rerollN, showMovies, showShows])
 
-  const movies = showMovies ? all.filter((i) => i.type === 'movie' && i.id !== surprise?.id) : []
-  const shows = showShows ? all.filter((i) => i.type === 'show' && i.id !== surprise?.id) : []
+  // "Because you loved ___" rows for the user's top two favourites.
+  const becauseRows = useMemo(() => {
+    const used = new Set(surprise ? [surprise.id] : [])
+    const rows = []
+    for (const s of seeds.slice(0, 2)) {
+      const picks = enabled
+        .filter((i) => !used.has(i.id))
+        .map((i) => ({ i, a: seedAffinity(i, s, graph) }))
+        .filter((x) => x.a >= 0.5)
+        .sort((x, y) => y.a - x.a)
+        .slice(0, 4)
+        .map((x) => ({ ...x.i, because: s.title }))
+      if (picks.length >= 2) {
+        picks.forEach((p) => used.add(p.id))
+        rows.push({ seed: s, items: picks })
+      }
+    }
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, seeds, graph, surprise, showMovies, showShows])
+  const inRows = new Set(becauseRows.flatMap((r) => r.items.map((i) => i.id)))
+
+  const movies = showMovies ? all.filter((i) => i.type === 'movie' && i.id !== surprise?.id && !inRows.has(i.id)) : []
+  const shows = showShows ? all.filter((i) => i.type === 'show' && i.id !== surprise?.id && !inRows.has(i.id)) : []
+  const isLiked = (item) => Boolean(feedback[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
 
   const inWatch = (item) => Boolean(watchlist[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
   const toggleMood = (m) => setMoods((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]))
@@ -94,6 +124,8 @@ export default function Discover({
       onRate={onRate}
       onWatchlist={onWatchlist}
       onDismiss={onDismiss}
+      liked={isLiked(item)}
+      onLike={onLike}
     />
   )
 
@@ -227,13 +259,23 @@ export default function Discover({
         </div>
       )}
 
-      {!settings.tmdbKey && enabled.length < 12 && (showMovies || showShows) && (
+      {becauseRows.map((row) => (
+        <div className="section section--because" key={row.seed.key}>
+          <div className="section__head">
+            <h2>Because you loved <em>{row.seed.title}</em></h2>
+            <span className="section__count">{row.items.length} picks</span>
+          </div>
+          <div className="grid">{row.items.map(card)}</div>
+        </div>
+      ))}
+
+      {enabled.length < 12 && (showMovies || showShows) && (
         <div className="notice notice--pool">
           <div>
             <strong>Running low on new picks.</strong> You’ve worked through most of
-            the built-in library that matches your filters. Add a free TMDB key in
-            Settings and CineMatch will pull in thousands more titles matched to
-            your taste — or relax a rating filter above.
+            the titles that match your filters. Try relaxing a rating filter or
+            clearing moods above
+            {settings.tmdbKey ? ', or press “Get fresh titles”.' : '. The shared library refreshes daily with new titles too.'}
           </div>
         </div>
       )}

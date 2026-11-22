@@ -132,14 +132,15 @@ export default function Settings({ settings, onPatch, onReset, onRetakeQuiz, onR
 
       <div className="setting setting--block">
         <div className="setting__text">
-          <h3>Live updates (optional)</h3>
+          <h3>Your own API keys (optional)</h3>
           <p>
-            Add a free{' '}
+            You don’t need a key. CineMatch’s shared library refreshes daily
+            with streaming info for your region. Adding your own free{' '}
             <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">TMDB API key</a>{' '}
-            to pull in titles from across all years (ranked to your taste), each
-            with its real streaming service and a watch link for your region. Add an{' '}
+            adds a live personal fetch on top: titles tailored to your taste and
+            fresh “Because you loved” picks from your favourites. An{' '}
             <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noreferrer">OMDb key</a>{' '}
-            to enrich them with true IMDb ratings and Rotten Tomatoes scores. Keys are stored only in your browser.
+            adds IMDb and Rotten Tomatoes scores to those. Keys stay in your browser.
           </p>
         </div>
         <div className="setting__keys">

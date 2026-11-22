@@ -5,6 +5,12 @@ import {
   buildTasteProfile,
   scoreItem,
   recommend,
+  explain,
+  recencyWeight,
+  applyActionSignals,
+  pickSeeds,
+  seedAffinity,
+  diversify,
 } from './recommender.js'
 
 const answers = {
@@ -139,5 +145,88 @@ describe('scoreItem + recommend', () => {
 
   it('scores a matching item positively', () => {
     expect(scoreItem(catalog[0], taste)).toBeGreaterThan(0)
+  })
+})
+
+describe('learning from actions', () => {
+  const flat = { genres: { Horror: 1, Comedy: 1 }, moods: {} }
+
+  it('dismissing a title lowers its genres', () => {
+    const t = applyActionSignals(flat, { removed: { k: { genres: ['Horror'], moods: [] } } })
+    expect(t.genres.Horror).toBeLessThan(flat.genres.Horror)
+    expect(t.genres.Comedy).toBe(1)
+  })
+
+  it('watchlisting and 👍 raise genres', () => {
+    const t = applyActionSignals(flat, {
+      watchlist: { a: { genres: ['Comedy'], moods: [] } },
+      feedback: { b: { vote: 1, genres: ['Comedy'], moods: [] } },
+    })
+    expect(t.genres.Comedy).toBeGreaterThan(1.9)
+  })
+})
+
+describe('recency', () => {
+  const now = Date.UTC(2026, 10, 1)
+  it('fresh ratings count fully, year-old ones less, never below 0.35', () => {
+    expect(recencyWeight(now, now)).toBeCloseTo(1)
+    expect(recencyWeight(now - 365 * 864e5, now)).toBeLessThan(0.5)
+    expect(recencyWeight(now - 5000 * 864e5, now)).toBe(0.35)
+    expect(recencyWeight(undefined, now)).toBe(1)
+  })
+  it('an old rave moves taste less than a new one', () => {
+    const base = { genres: {}, moods: {} }
+    const fresh = applyRatingsToProfile(base, { a: { rating: 10, genres: ['War'], ratedAt: now } }, now)
+    const old = applyRatingsToProfile(base, { a: { rating: 10, genres: ['War'], ratedAt: now - 400 * 864e5 } }, now)
+    expect(fresh.genres.War).toBeGreaterThan(old.genres.War)
+  })
+})
+
+describe('because you loved', () => {
+  const ratings = {
+    'show:breaking bad:2008': { key: 'show:breaking bad:2008', title: 'Breaking Bad', rating: 10, genres: ['Crime', 'Drama'], moods: ['dark'] },
+    'movie:meh:2000': { key: 'movie:meh:2000', title: 'Meh', rating: 5, genres: ['Comedy'], moods: [] },
+  }
+  const pool = [
+    { id: 'x', type: 'show', title: 'Crime Show', year: 2015, imdb: 8, genres: ['Crime', 'Drama'], moods: ['dark'] },
+    { id: 'y', type: 'movie', title: 'Kids Film', year: 2010, imdb: 8, genres: ['Family'], moods: ['cozy'] },
+    { id: 'z', type: 'movie', title: 'Linked Gem', year: 2012, imdb: 8, genres: ['Romance'], moods: ['romantic'] },
+  ]
+
+  it('picks only loved titles as seeds', () => {
+    const seeds = pickSeeds(ratings, { 'movie:liked:2001': { key: 'movie:liked:2001', title: 'Liked', vote: 1, genres: [] } })
+    expect(seeds.map((s) => s.title)).toEqual(['Breaking Bad', 'Liked'])
+  })
+
+  it('labels close matches with the seed they came from', () => {
+    const seeds = pickSeeds(ratings, {})
+    const recs = recommend(pool, { genres: {}, moods: {} }, { seeds })
+    const crime = recs.find((r) => r.title === 'Crime Show')
+    expect(crime.because).toBe('Breaking Bad')
+    expect(explain(crime, { genres: {}, moods: {} })).toBe('Because you loved Breaking Bad.')
+    expect(recs.find((r) => r.title === 'Kids Film').because).toBeUndefined()
+  })
+
+  it('the "people also watched" graph links titles with no shared tags', () => {
+    const seed = pickSeeds(ratings, {})[0]
+    const graph = { [seed.key]: ['movie:linked gem:2012'] }
+    expect(seedAffinity(pool[2], seed, graph)).toBeGreaterThan(seedAffinity(pool[2], seed, {}))
+    const recs = recommend(pool, { genres: {}, moods: {} }, { seeds: [seed], graph })
+    expect(recs.find((r) => r.title === 'Linked Gem').because).toBe('Breaking Bad')
+  })
+})
+
+describe('diversify', () => {
+  it('breaks up runs of the same genre', () => {
+    const mk = (id, g) => ({ item: { id, genres: [g] }, score: 1 })
+    const list = [mk(1, 'Crime'), mk(2, 'Crime'), mk(3, 'Crime'), mk(4, 'Comedy'), mk(5, 'Sci-Fi')]
+    const out = diversify(list, 0.6).map((s) => s.item.genres[0])
+    expect(out[0]).toBe('Crime')          // best match still first
+    expect(out[1]).not.toBe('Crime')      // but not three crime picks in a row
+    expect(out).toHaveLength(5)
+  })
+  it('is a no-op at zero strength', () => {
+    const list = [1, 2, 3].map((id) => ({ item: { id, genres: ['A'] }, score: 1 }))
+    expect(diversify(list, 0)).toEqual(list)
   })
 })

@@ -22,6 +22,7 @@ const DEFAULTS = {
   },
   watchlist: {},          // key -> item snapshot
   removed: {},            // key -> item snapshot of dismissed recommendations
+  feedback: {},           // key -> { vote: 1, ...snapshot } from 👍 "more like this"
   liveCache: null,        // { items: [], fetchedAt } — cached online catalog
 }
 
