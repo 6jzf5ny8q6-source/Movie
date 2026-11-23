@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { imdbUrl, rtUrl } from '../lib/links.js'
 
 // Rate a title 1-10 and flag whether you'd watch it again. Works for both
 // catalog titles and manually-added ones.
@@ -20,6 +21,10 @@ export default function RatingModal({ item, existing, onSave, onClose }) {
         <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
         <h2 className="modal__title">Rate “{item.title}”</h2>
         <p className="modal__sub">{item.type === 'movie' ? 'Movie' : 'TV Show'} · {item.year || 'Watched'}</p>
+        <p className="modal__links">
+          <a href={imdbUrl(item)} target="_blank" rel="noreferrer">IMDb ↗</a>
+          <a href={rtUrl(item)} target="_blank" rel="noreferrer">Rotten Tomatoes ↗</a>
+        </p>
 
         <label className="modal__label">Your score: <strong>{rating}/10</strong></label>
         <input

@@ -1,0 +1,53 @@
+name: Build shared catalog
+
+# Builds the shared title library every visitor loads, so nobody needs their
+# own API key. Uses the repo owner's keys from Actions secrets:
+#   TMDB_API_KEY  (required)  — TMDB v3 API key
+#   OMDB_API_KEY  (optional)  — adds IMDb + Rotten Tomatoes scores
+# Publishes catalog.json to the `data` branch (force-pushed, one commit) and
+# the app reads it from raw.githubusercontent.com.
+
+on:
+  schedule:
+    - cron: '17 9 * * *' # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shared-catalog
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Fetch previous catalog (keeps yesterday's IMDb/RT scores)
+        run: |
+          git fetch --depth=1 origin data:data 2>/dev/null && git show data:catalog.json > prev.json || echo '{}' > prev.json
+
+      - name: Build catalog
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+        run: node scripts/build-catalog.mjs --out catalog.json --prev prev.json
+
+      - name: Publish to data branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir pub && cp catalog.json pub/
+          cd pub
+          git init -q -b data
+          git add catalog.json
+          git -c user.name="cinematch-bot" -c user.email="actions@users.noreply.github.com" \
+            commit -q -m "Update shared catalog ($(date -u +%F))"
+          git push -f -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data

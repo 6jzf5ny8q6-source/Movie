@@ -88,3 +88,20 @@ src/
 
 > Ratings and preferences are stored only in your browser (`localStorage`), and
 > any API keys you enter never leave your device.
+
+## Shared library (no API key needed for visitors)
+
+A GitHub Action (`.github/workflows/catalog.yml`) runs daily and builds
+`catalog.json` — about 1,200 popular and top-rated titles across all years,
+with streaming providers for every supported region, "people also watched"
+links and (with an OMDb key) IMDb + Rotten Tomatoes scores. It publishes the
+file to the `data` branch, and every visitor's app loads it automatically.
+
+Setup (one time): in the repo go to **Settings → Secrets and variables →
+Actions → New repository secret** and add:
+
+- `TMDB_API_KEY` — your TMDB **v3** API key (required)
+- `OMDB_API_KEY` — your OMDb key (optional)
+
+Then run it once from **Actions → Build shared catalog → Run workflow**.
+Keys stay secret in GitHub and are never shipped to visitors.

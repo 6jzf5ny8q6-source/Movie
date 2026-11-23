@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { QUIZ } from '../data/quizQuestions.js'
+import { selectQuiz } from '../data/quizQuestions.js'
 
-// The 12-question taste quiz. Collects one option per question and hands the
-// answer map back to App, which turns it into a taste profile.
-export default function Quiz({ initialAnswers, onComplete, onCancel }) {
+// The taste quiz. Draws a fresh, randomized set of questions each time it
+// mounts (so a retake asks new questions) and always starts with no prior
+// answers. Hands the answer map back to App, which builds a taste profile.
+export default function Quiz({ onComplete, onCancel, cancelLabel = 'Cancel' }) {
+  const [questions] = useState(() => selectQuiz(12))
   const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState(initialAnswers || {})
+  const [answers, setAnswers] = useState({})
 
-  const q = QUIZ[step]
-  const total = QUIZ.length
+  const q = questions[step]
+  const total = questions.length
   const selectedIndex = answers[q.id]?._i
 
-  const choose = (opt, i) => {
+  const choose = (opt, i, e) => {
+    // Drop focus from the clicked button so its focus/hover styling can't
+    // carry over onto the next question.
+    e?.currentTarget?.blur()
     const next = { ...answers, [q.id]: { ...opt, _i: i } }
     setAnswers(next)
     // brief pause so the selection is visible, then advance
@@ -34,12 +39,12 @@ export default function Quiz({ initialAnswers, onComplete, onCancel }) {
 
       <h2 className="quiz__prompt">{q.prompt}</h2>
 
-      <div className="quiz__options">
+      <div className="quiz__options" key={q.id}>
         {q.options.map((opt, i) => (
           <button
-            key={i}
+            key={`${q.id}-${i}`}
             className={`quiz__option ${selectedIndex === i ? 'is-selected' : ''}`}
-            onClick={() => choose(opt, i)}
+            onClick={(e) => choose(opt, i, e)}
           >
             <span className="quiz__optletter">{String.fromCharCode(65 + i)}</span>
             <span>{opt.label}</span>
@@ -52,7 +57,7 @@ export default function Quiz({ initialAnswers, onComplete, onCancel }) {
           className="btn btn--ghost"
           onClick={() => (step > 0 ? setStep(step - 1) : onCancel?.())}
         >
-          {step > 0 ? '‹ Back' : 'Cancel'}
+          {step > 0 ? '‹ Back' : cancelLabel}
         </button>
         <span className="quiz__hint">Pick the answer that feels most like you.</span>
       </div>

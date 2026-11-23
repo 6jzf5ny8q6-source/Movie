@@ -1,45 +1,133 @@
 import { useMemo, useState } from 'react'
-import { recommend, explain } from '../lib/recommender.js'
+import { recommend, explain, seedAffinity } from '../lib/recommender.js'
+import { MOODS } from '../data/catalog.js'
 import TitleCard from './TitleCard.jsx'
 
-// The recommendations view. Shows up to `prefLimit` movies and `prefLimit`
-// shows by default, each with a "show more" that requests additional picks.
+const RUNTIME_OPTS = [
+  { key: 'any', label: 'Any length' },
+  { key: 'short', label: 'Short (< 90 min)' },
+  { key: 'medium', label: 'Standard (90–130 min)' },
+  { key: 'long', label: 'Long (> 130 min)' },
+]
+
+// The recommendations view. A "Tonight's pick" spotlight, tonight-mood + runtime
+// quick filters, then up to `prefLimit` movies and shows with "show more".
 export default function Discover({
   catalog,
   taste,
   ratings,
+  removed,
   settings,
   watchlist,
   hasProfile,
   services,
+  region,
   live,
   onRate,
   onWatchlist,
+  onDismiss,
+  onLike,
+  feedback = {},
+  seeds = [],
+  graph = {},
   onSetMinImdb,
+  onSetMinRt,
   onSetServices,
+  onPatchSettings,
   onRefreshLive,
   onTakeQuiz,
 }) {
   const base = settings.prefLimit || 5
   const [movieLimit, setMovieLimit] = useState(base)
   const [showLimit, setShowLimit] = useState(base)
+  const [moods, setMoods] = useState([])       // tonight's mood filter
+  const [runtime, setRuntime] = useState('any') // movie length filter
+  const [rerollN, setRerollN] = useState(0)     // bumps to pick a new spotlight
+  // Per-visit seed: keeps this session's order stable but varies the mix
+  // between visits so recommendations don't feel frozen.
+  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 31))
+
+  const showMovies = settings.showMovies !== false
+  const showShows = settings.showShows !== false
 
   const common = {
     ratings,
+    removed,
+    watchlist,
+    useImdb: settings.useImdb,
     minImdb: settings.minImdb,
+    useRt: settings.useRt,
+    minRt: settings.minRt,
     services: settings.services,
+    moods,
+    runtime,
+    explore: 0.4,   // light seeded shuffle so each visit surfaces a fresh mix
+    seed,
+    seeds,          // "because you loved" boost
+    graph,          // "people also watched" links
+    diversity: 0.3, // don't stack five near-identical picks in a row
   }
+  const ratingPrefs = { useImdb: settings.useImdb, useRt: settings.useRt }
+  const deps = [catalog, taste, ratings, removed, watchlist, settings.useImdb, settings.minImdb, settings.useRt, settings.minRt, settings.services, moods, runtime, seeds, graph]
 
-  const movies = useMemo(
-    () => recommend(catalog, taste, { ...common, type: 'movie' }),
-    [catalog, taste, ratings, settings.minImdb, settings.services],
-  )
-  const shows = useMemo(
-    () => recommend(catalog, taste, { ...common, type: 'show' }),
-    [catalog, taste, ratings, settings.minImdb, settings.services],
-  )
+  const all = useMemo(() => recommend(catalog, taste, { ...common, type: 'all' }), deps) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only recommend from the types the user has switched on.
+  const enabled = all.filter((i) => (i.type === 'movie' ? showMovies : showShows))
+
+  // Spotlight: a random strong match from the top of the enabled list.
+  const surprise = useMemo(() => {
+    if (!enabled.length) return null
+    const top = enabled.slice(0, Math.min(20, enabled.length))
+    return top[Math.floor(Math.random() * top.length)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, rerollN, showMovies, showShows])
+
+  // "Because you loved ___" rows for the user's top two favourites.
+  const becauseRows = useMemo(() => {
+    const used = new Set(surprise ? [surprise.id] : [])
+    const rows = []
+    for (const s of seeds.slice(0, 2)) {
+      const picks = enabled
+        .filter((i) => !used.has(i.id))
+        .map((i) => ({ i, a: seedAffinity(i, s, graph) }))
+        .filter((x) => x.a >= 0.5)
+        .sort((x, y) => y.a - x.a)
+        .slice(0, 4)
+        .map((x) => ({ ...x.i, because: s.title }))
+      if (picks.length >= 2) {
+        picks.forEach((p) => used.add(p.id))
+        rows.push({ seed: s, items: picks })
+      }
+    }
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, seeds, graph, surprise, showMovies, showShows])
+  const inRows = new Set(becauseRows.flatMap((r) => r.items.map((i) => i.id)))
+
+  const movies = showMovies ? all.filter((i) => i.type === 'movie' && i.id !== surprise?.id && !inRows.has(i.id)) : []
+  const shows = showShows ? all.filter((i) => i.type === 'show' && i.id !== surprise?.id && !inRows.has(i.id)) : []
+  const isLiked = (item) => Boolean(feedback[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
 
   const inWatch = (item) => Boolean(watchlist[`${item.type}:${item.title.toLowerCase().trim()}:${item.year || ''}`])
+  const toggleMood = (m) => setMoods((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]))
+
+  const card = (item) => (
+    <TitleCard
+      key={item.id}
+      item={item}
+      variant="discover"
+      reason={explain(item, taste)}
+      inWatchlist={inWatch(item)}
+      ratingPrefs={ratingPrefs}
+      region={region}
+      onRate={onRate}
+      onWatchlist={onWatchlist}
+      onDismiss={onDismiss}
+      liked={isLiked(item)}
+      onLike={onLike}
+    />
+  )
 
   const Section = ({ label, items, limit, setLimit }) => (
     <div className="section">
@@ -48,21 +136,9 @@ export default function Discover({
         <span className="section__count">{Math.min(limit, items.length)} of {items.length}</span>
       </div>
       {items.length === 0 ? (
-        <p className="empty">No titles match your filters. Try lowering the minimum rating.</p>
+        <p className="empty">No titles match your filters. Try lowering a minimum rating or clearing moods.</p>
       ) : (
-        <div className="grid">
-          {items.slice(0, limit).map((item) => (
-            <TitleCard
-              key={item.id}
-              item={item}
-              variant="discover"
-              reason={explain(item, taste)}
-              inWatchlist={inWatch(item)}
-              onRate={onRate}
-              onWatchlist={onWatchlist}
-            />
-          ))}
-        </div>
+        <div className="grid">{items.slice(0, limit).map(card)}</div>
       )}
       {limit < items.length && (
         <div className="section__more">
@@ -87,49 +163,130 @@ export default function Discover({
       )}
 
       <div className="filters">
-        <div className="filters__group filters__group--rating">
-          <label>
-            Minimum IMDb rating
-            <strong className="filters__val">{settings.minImdb.toFixed(1)}</strong>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="9.5"
-            step="0.1"
-            value={settings.minImdb}
-            onChange={(e) => onSetMinImdb(Number(e.target.value))}
-          />
-        </div>
+        {settings.useImdb && (
+          <div className="filters__group filters__group--rating">
+            <label>
+              Minimum IMDb rating
+              <strong className="filters__val">{settings.minImdb.toFixed(1)}</strong>
+            </label>
+            <input type="range" min="0" max="9.5" step="0.1" value={settings.minImdb}
+              onChange={(e) => onSetMinImdb(Number(e.target.value))} />
+          </div>
+        )}
+
+        {settings.useRt && (
+          <div className="filters__group filters__group--rating">
+            <label>
+              Minimum Rotten Tomatoes
+              <strong className="filters__val filters__val--rt">{settings.minRt}%</strong>
+            </label>
+            <input type="range" min="0" max="100" step="1" value={settings.minRt}
+              onChange={(e) => onSetMinRt(Number(e.target.value))} />
+          </div>
+        )}
+
+        {!settings.useImdb && !settings.useRt && (
+          <div className="filters__group">
+            <span className="filters__off">Rating filters are off — enable IMDb or Rotten Tomatoes in Settings.</span>
+          </div>
+        )}
 
         <div className="filters__group">
           <label htmlFor="svc">Streaming service</label>
-          <select
-            id="svc"
-            value={settings.services[0] || ''}
-            onChange={(e) => onSetServices(e.target.value ? [e.target.value] : [])}
-          >
+          <select id="svc" value={settings.services[0] || ''}
+            onChange={(e) => onSetServices(e.target.value ? [e.target.value] : [])}>
             <option value="">All services</option>
-            {services.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            {services.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
         </div>
 
+        <div className="filters__group">
+          <label htmlFor="rt">Movie length</label>
+          <select id="rt" value={runtime} onChange={(e) => setRuntime(e.target.value)}>
+            {RUNTIME_OPTS.map((o) => (<option key={o.key} value={o.key}>{o.label}</option>))}
+          </select>
+        </div>
+
+        <div className="filters__group">
+          <label>Show me</label>
+          <div className="typetoggles">
+            <button
+              className={`toggle ${showMovies ? 'is-on' : ''}`}
+              onClick={() => onPatchSettings({ showMovies: !showMovies })}
+              aria-pressed={showMovies}
+            >
+              <span className="toggle__dot" /> Movies
+            </button>
+            <button
+              className={`toggle ${showShows ? 'is-on' : ''}`}
+              onClick={() => onPatchSettings({ showShows: !showShows })}
+              aria-pressed={showShows}
+            >
+              <span className="toggle__dot" /> TV Shows
+            </button>
+          </div>
+        </div>
+
         <div className="filters__group filters__group--live">
-          <button
-            className="btn btn--outline"
-            onClick={onRefreshLive}
-            disabled={live.loading}
-          >
+          <button className="btn btn--outline" onClick={onRefreshLive} disabled={live.loading}>
             {live.loading ? 'Fetching…' : '⟳ Get fresh titles'}
           </button>
           {live.message && <span className={`live__msg ${live.error ? 'is-error' : ''}`}>{live.message}</span>}
         </div>
       </div>
 
-      <Section label="Movies for you" items={movies} limit={movieLimit} setLimit={setMovieLimit} />
-      <Section label="TV shows for you" items={shows} limit={showLimit} setLimit={setShowLimit} />
+      <div className="moodbar">
+        <span className="moodbar__label">In the mood for</span>
+        <div className="moodbar__chips">
+          {MOODS.map((m) => (
+            <button key={m} className={`chip ${moods.includes(m) ? 'is-on' : ''}`} onClick={() => toggleMood(m)}>
+              {m}
+            </button>
+          ))}
+          {moods.length > 0 && (
+            <button className="chip chip--clear" onClick={() => setMoods([])}>clear ✕</button>
+          )}
+        </div>
+      </div>
+
+      {surprise && (
+        <div className="spotlight">
+          <div className="spotlight__head">
+            <h2>🍿 Tonight’s pick</h2>
+            <button className="btn btn--ghost" onClick={() => setRerollN((n) => n + 1)}>🎲 Surprise me again</button>
+          </div>
+          <div className="spotlight__card">{card(surprise)}</div>
+        </div>
+      )}
+
+      {becauseRows.map((row) => (
+        <div className="section section--because" key={row.seed.key}>
+          <div className="section__head">
+            <h2>Because you loved <em>{row.seed.title}</em></h2>
+            <span className="section__count">{row.items.length} picks</span>
+          </div>
+          <div className="grid">{row.items.map(card)}</div>
+        </div>
+      ))}
+
+      {enabled.length < 12 && (showMovies || showShows) && (
+        <div className="notice notice--pool">
+          <div>
+            <strong>Running low on new picks.</strong> You’ve worked through most of
+            the titles that match your filters. Try relaxing a rating filter or
+            clearing moods above
+            {settings.tmdbKey ? ', or press “Get fresh titles”.' : '. The shared library refreshes daily with new titles too.'}
+          </div>
+        </div>
+      )}
+
+      {!showMovies && !showShows && (
+        <p className="empty empty--big">
+          Both movies and TV are switched off. Turn one on above to see recommendations.
+        </p>
+      )}
+      {showMovies && <Section label="Movies for you" items={movies} limit={movieLimit} setLimit={setMovieLimit} />}
+      {showShows && <Section label="TV shows for you" items={shows} limit={showLimit} setLimit={setShowLimit} />}
     </section>
   )
 }
